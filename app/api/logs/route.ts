@@ -22,11 +22,21 @@ export async function GET() {
       author: row.author || undefined,
       team: row.team || undefined,
     }))
-    return NextResponse.json(events)
+    return NextResponse.json(events, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    })
   }
 
   // Fallback to Discord API if Supabase is empty or errors
   console.log('Supabase fallback: using Discord API', error?.message)
   const events = await fetchChannelHistory(500)
-  return NextResponse.json(events)
+  return NextResponse.json(events, {
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+    },
+  })
 }

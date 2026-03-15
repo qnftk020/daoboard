@@ -31,5 +31,9 @@ export async function POST(req: NextRequest) {
   const pusher = getPusherServer()
   await pusher.trigger('daoboard', 'vibe-update', body)
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({
+    ok: true,
+    dbSaved: !error,
+    dbError: error?.message || null,
+  })
 }
