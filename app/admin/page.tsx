@@ -476,6 +476,53 @@ export default function AdminPage() {
             ) : null}
           </div>
 
+          {/* 봇이 참여한 채널 목록 */}
+          {discordSetup && discordSetup.guilds.length > 0 && (
+            <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+              <h2 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">📋 봇 참여 채널 목록</h2>
+              {discordSetup.guilds.map((guild) => (
+                <div key={guild.id} className="mb-4 last:mb-0">
+                  <div className="mb-2 flex items-center gap-2">
+                    {guild.icon ? (
+                      <img src={guild.icon} alt="" className="h-6 w-6 rounded-full" />
+                    ) : (
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-bold text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                        {guild.name.charAt(0)}
+                      </div>
+                    )}
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{guild.name}</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">({guild.channels.length}개 채널)</span>
+                  </div>
+                  <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {guild.channels.map((channel) => {
+                      const isActive = channel.id === process.env.NEXT_PUBLIC_DISCORD_CHANNEL_ID ||
+                        (status?.discord.channelName && channel.name === status.discord.channelName)
+                      return (
+                        <div
+                          key={channel.id}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                            isActive
+                              ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                              : 'bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                          }`}
+                        >
+                          <span className="text-gray-400">#</span>
+                          <span className="truncate">{channel.name}</span>
+                          {isActive && (
+                            <span className="ml-auto flex items-center gap-1 text-xs text-green-500">
+                              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                              연결됨
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Pusher Status */}
           <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
             <div className="mb-4 flex items-center justify-between">
