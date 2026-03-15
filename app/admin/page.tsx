@@ -42,23 +42,11 @@ function StatusBadge({ ok }: { ok: boolean }) {
   )
 }
 
-function EnvBadge({ label, set }: { label: string; set: boolean }) {
-  return (
-    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800">
-      <code className="text-xs text-gray-600 dark:text-gray-400">{label}</code>
-      {set ? (
-        <span className="text-xs text-green-600 dark:text-green-400">✓ 설정됨</span>
-      ) : (
-        <span className="text-xs text-red-500">✗ 미설정</span>
-      )}
-    </div>
-  )
-}
-
 interface DbStats {
   totalEvents: number
   typeCounts: Record<string, number>
   teamCounts: Record<string, number>
+  channelCounts: Record<string, number>
   oldestEvent: string | null
   newestEvent: string | null
 }
@@ -71,18 +59,15 @@ export default function AdminPage() {
   const [status, setStatus] = useState<StatusData | null>(null)
   const [loading, setLoading] = useState(false)
 
-  // Discord 연동 상태
+  // Discord 채널 목록
   const [discordSetup, setDiscordSetup] = useState<DiscordSetupData | null>(null)
-  const [selectedGuild, setSelectedGuild] = useState<string>('')
-  const [selectedChannel, setSelectedChannel] = useState<string>('')
   const [discordLoading, setDiscordLoading] = useState(false)
-  const [connectMessage, setConnectMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // DB 관리 상태
   const [dbStats, setDbStats] = useState<DbStats | null>(null)
   const [dbLoading, setDbLoading] = useState(false)
   const [dbMessage, setDbMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [confirmReset, setConfirmReset] = useState<string | null>(null) // null | 'all' | team id
+  const [confirmReset, setConfirmReset] = useState<string | null>(null)
   const [migrateLoading, setMigrateLoading] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -127,44 +112,11 @@ export default function AdminPage() {
       if (res.ok) {
         const data: DiscordSetupData = await res.json()
         setDiscordSetup(data)
-        if (data.current.guildId) setSelectedGuild(data.current.guildId)
-        if (data.current.channelId) setSelectedChannel(data.current.channelId)
       }
     } catch {
       // ignore
     } finally {
       setDiscordLoading(false)
-    }
-  }
-
-  const handleConnect = async () => {
-    if (!selectedGuild || !selectedChannel) return
-    setConnectMessage(null)
-
-    const guild = discordSetup?.guilds.find((g) => g.id === selectedGuild)
-    const channel = guild?.channels.find((ch) => ch.id === selectedChannel)
-
-    try {
-      const res = await fetch('/api/admin/discord/connect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          guildId: selectedGuild,
-          channelId: selectedChannel,
-          guildName: guild?.name,
-          channelName: channel?.name,
-        }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setConnectMessage({ type: 'success', text: data.message })
-        // 상태 새로고침
-        fetchStatus()
-      } else {
-        setConnectMessage({ type: 'error', text: data.error })
-      }
-    } catch {
-      setConnectMessage({ type: 'error', text: '연결 요청에 실패했습니다.' })
     }
   }
 
@@ -223,7 +175,6 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
-    // Check if already logged in
     fetch('/api/admin/status')
       .then((res) => {
         if (res.ok) {
@@ -284,6 +235,9 @@ export default function AdminPage() {
     )
   }
 
+  // 활성 채널 (DB에서 데이터가 들어온 채널)
+  const activeChannelNames = dbStats?.channelCounts ? Object.keys(dbStats.channelCounts) : []
+
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-4 py-8">
       <header className="mb-8 flex items-center justify-between">
@@ -307,22 +261,15 @@ export default function AdminPage() {
         </div>
       ) : status ? (
         <div className="space-y-6">
-          {/* Discord 연동 설정 */}
+          {/* Discord 연동 상태 (간소화) */}
           <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">🔗 Discord 연동</h2>
-              {status.discord.connected ? (
-                <StatusBadge ok={true} />
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-semibold text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" /> 설정 필요
-                </span>
-              )}
+              <StatusBadge ok={status.discord.connected} />
             </div>
 
-            {/* 연결된 상태 표시 */}
-            {status.discord.connected && (
-              <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
+            {status.discord.connected ? (
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
                 <div className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-400">
                   <span className="text-lg">✅</span> 연결 완료
                 </div>
@@ -336,166 +283,31 @@ export default function AdminPage() {
                     <p className="mt-1 font-semibold text-gray-900 dark:text-white">{status.discord.guildName}</p>
                   </div>
                   <div className="rounded-lg bg-white/60 p-3 dark:bg-gray-800/50">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">채널</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">로그 채널</p>
                     <p className="mt-1 font-semibold text-gray-900 dark:text-white">#{status.discord.channelName}</p>
                   </div>
                 </div>
               </div>
-            )}
-
-            {/* 서버/채널 선택 UI */}
-            {discordLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="h-6 w-6 animate-spin rounded-full border-3 border-purple-500 border-t-transparent" />
-                <span className="ml-3 text-sm text-gray-500 dark:text-gray-400">Discord 서버 검색 중...</span>
-              </div>
-            ) : discordSetup && discordSetup.guilds.length > 0 ? (
-              <div className="space-y-4">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  봇이 참여한 Discord 서버와 채널을 선택하세요.
-                </p>
-
-                {/* 서버 선택 */}
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    서버 선택
-                  </label>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {discordSetup.guilds.map((guild) => (
-                      <button
-                        key={guild.id}
-                        onClick={() => {
-                          setSelectedGuild(guild.id)
-                          setSelectedChannel('')
-                          setConnectMessage(null)
-                        }}
-                        className={`flex items-center gap-3 rounded-lg border-2 p-3 text-left transition ${
-                          selectedGuild === guild.id
-                            ? 'border-purple-500 bg-purple-50 dark:border-purple-400 dark:bg-purple-900/20'
-                            : 'border-gray-200 hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600'
-                        }`}
-                      >
-                        {guild.icon ? (
-                          <img src={guild.icon} alt="" className="h-10 w-10 rounded-full" />
-                        ) : (
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-sm font-bold text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-                            {guild.name.charAt(0)}
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-semibold text-gray-900 dark:text-white">{guild.name}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {guild.channels.length}개 텍스트 채널
-                          </p>
-                        </div>
-                        {selectedGuild === guild.id && (
-                          <span className="ml-auto text-purple-500">✓</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 채널 선택 */}
-                {selectedGuild && (
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      채널 선택
-                    </label>
-                    <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-gray-200 p-2 dark:border-gray-700">
-                      {discordSetup.guilds
-                        .find((g) => g.id === selectedGuild)
-                        ?.channels
-                        .slice()
-                        .sort((a, b) => {
-                          // 현재 연결된 채널을 맨 위로
-                          const aActive = a.name === status?.discord.channelName
-                          const bActive = b.name === status?.discord.channelName
-                          if (aActive && !bActive) return -1
-                          if (!aActive && bActive) return 1
-                          return 0
-                        })
-                        .map((channel) => (
-                          <button
-                            key={channel.id}
-                            onClick={() => {
-                              setSelectedChannel(channel.id)
-                              setConnectMessage(null)
-                            }}
-                            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${
-                              selectedChannel === channel.id
-                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                                : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800'
-                            }`}
-                          >
-                            <span className="text-gray-400">#</span>
-                            <span>{channel.name}</span>
-                            {channel.name === status?.discord.channelName && selectedChannel !== channel.id && (
-                              <span className="ml-auto text-xs text-green-500">현재 연결됨</span>
-                            )}
-                            {selectedChannel === channel.id && (
-                              <span className="ml-auto text-purple-500">✓</span>
-                            )}
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 연결 버튼 */}
-                {selectedGuild && selectedChannel && (
-                  <button
-                    onClick={handleConnect}
-                    className="w-full rounded-lg bg-purple-600 py-2.5 text-sm font-semibold text-white transition hover:bg-purple-700"
-                  >
-                    🔗 이 채널에 연결하기
-                  </button>
-                )}
-
-                {/* 연결 결과 메시지 */}
-                {connectMessage && (
-                  <div
-                    className={`rounded-lg p-3 ${
-                      connectMessage.type === 'success'
-                        ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                        : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
-                    }`}
-                  >
-                    <p className="text-sm">{connectMessage.text}</p>
-                  </div>
-                )}
-              </div>
-            ) : discordSetup && discordSetup.guilds.length === 0 ? (
-              <div className="rounded-lg bg-yellow-50 p-4 dark:bg-yellow-900/20">
-                <p className="text-sm font-medium text-yellow-700 dark:text-yellow-400">
-                  봇이 아직 어떤 서버에도 초대되지 않았습니다.
-                </p>
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  아래 링크로 봇을 Discord 서버에 초대하세요:
-                </p>
-                <a
-                  href={`https://discord.com/api/oauth2/authorize?client_id=${process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID || '1482556277983809737'}&permissions=2048&scope=bot%20applications.commands`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-block rounded-lg bg-[#5865F2] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#4752C4]"
-                >
-                  Discord에 봇 초대하기
-                </a>
-              </div>
-            ) : !status.discord.connected && !discordSetup ? (
+            ) : (
               <div className="rounded-lg bg-red-50 p-3 dark:bg-red-900/20">
                 <p className="text-sm text-red-600 dark:text-red-400">{status.discord.error}</p>
               </div>
-            ) : null}
+            )}
           </div>
 
-          {/* 봇이 참여한 채널 목록 */}
-          {discordSetup && discordSetup.guilds.length > 0 && (
-            <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
-              <h2 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">📋 봇 참여 채널 목록</h2>
-              {discordSetup.guilds.map((guild) => (
-                <div key={guild.id} className="mb-4 last:mb-0">
-                  <div className="mb-2 flex items-center gap-2">
+          {/* 봇 채널 목록 + 활성 채널 표시 */}
+          <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">📋 봇 채널 현황</h2>
+              {discordLoading && (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
+              )}
+            </div>
+
+            {discordSetup && discordSetup.guilds.length > 0 ? (
+              discordSetup.guilds.map((guild) => (
+                <div key={guild.id}>
+                  <div className="mb-3 flex items-center gap-2">
                     {guild.icon ? (
                       <img src={guild.icon} alt="" className="h-6 w-6 rounded-full" />
                     ) : (
@@ -506,65 +318,93 @@ export default function AdminPage() {
                     <span className="text-sm font-semibold text-gray-900 dark:text-white">{guild.name}</span>
                     <span className="text-xs text-gray-400 dark:text-gray-500">({guild.channels.length}개 채널)</span>
                   </div>
-                  <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                    {guild.channels.map((channel) => {
-                      const isActive = channel.id === process.env.NEXT_PUBLIC_DISCORD_CHANNEL_ID ||
-                        (status?.discord.channelName && channel.name === status.discord.channelName)
-                      return (
-                        <div
-                          key={channel.id}
-                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                            isActive
-                              ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                              : 'bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                          }`}
-                        >
-                          <span className="text-gray-400">#</span>
-                          <span className="truncate">{channel.name}</span>
-                          {isActive && (
-                            <span className="ml-auto flex items-center gap-1 text-xs text-green-500">
-                              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                              연결됨
-                            </span>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
 
-          {/* Pusher Status */}
-          <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">📡 Pusher (WebSocket)</h2>
-              <StatusBadge ok={status.pusher.connected} />
-            </div>
-            {!status.pusher.connected && status.pusher.error && (
-              <div className="rounded-lg bg-red-50 p-3 dark:bg-red-900/20">
-                <p className="text-sm text-red-600 dark:text-red-400">{status.pusher.error}</p>
-              </div>
-            )}
-            {status.pusher.connected && (
-              <p className="text-sm text-green-600 dark:text-green-400">Pusher 환경변수가 올바르게 설정되어 있습니다.</p>
-            )}
+                  {/* 활성 채널 (데이터가 들어온 채널) 먼저 표시 */}
+                  {activeChannelNames.length > 0 && (
+                    <div className="mb-3">
+                      <p className="mb-2 text-xs font-medium text-green-600 dark:text-green-400">📡 데이터 수신 채널</p>
+                      <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                        {activeChannelNames.map((channelName) => (
+                          <div
+                            key={channelName}
+                            className="flex items-center justify-between rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400"
+                          >
+                            <span className="flex items-center gap-2">
+                              <span className="text-green-400">#</span>
+                              <span className="truncate">{channelName}</span>
+                            </span>
+                            <span className="flex items-center gap-1.5 text-xs">
+                              <span className="relative flex h-2 w-2">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                                <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                              </span>
+                              {dbStats?.channelCounts?.[channelName] || 0}건
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 전체 채널 목록 (접기/펼치기) */}
+                  <details className="group">
+                    <summary className="mb-2 cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                      전체 채널 목록 보기 ▸
+                    </summary>
+                    <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                      {guild.channels.map((channel) => {
+                        const isLogChannel = status?.discord.channelName && channel.name === status.discord.channelName
+                        const hasData = activeChannelNames.includes(channel.name)
+                        return (
+                          <div
+                            key={channel.id}
+                            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm ${
+                              isLogChannel
+                                ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400'
+                                : hasData
+                                  ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                                  : 'bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-500'
+                            }`}
+                          >
+                            <span className="text-gray-400">#</span>
+                            <span className="truncate">{channel.name}</span>
+                            {isLogChannel && (
+                              <span className="ml-auto text-[10px] text-purple-500">로그</span>
+                            )}
+                            {hasData && !isLogChannel && (
+                              <span className="ml-auto flex items-center gap-1 text-[10px] text-green-500">
+                                <span className="h-1 w-1 rounded-full bg-green-500" />
+                                활성
+                              </span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </details>
+                </div>
+              ))
+            ) : !discordLoading ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">채널 정보를 불러올 수 없습니다.</p>
+            ) : null}
           </div>
 
-          {/* Environment Variables */}
+          {/* Pusher + 환경변수 (한 카드로 합침) */}
           <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
-            <h2 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">🔑 환경변수 상태</h2>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <EnvBadge label="DISCORD_BOT_TOKEN" set={status.env.discordBotToken} />
-              <EnvBadge label="DISCORD_GUILD_ID" set={status.env.discordGuildId} />
-              <EnvBadge label="DISCORD_CHANNEL_ID" set={status.env.discordChannelId} />
-              <EnvBadge label="PUSHER_APP_ID" set={status.env.pusherAppId} />
-              <EnvBadge label="PUSHER_KEY" set={status.env.pusherKey} />
-              <EnvBadge label="PUSHER_SECRET" set={status.env.pusherSecret} />
-              <EnvBadge label="WEBHOOK_SECRET" set={status.env.webhookSecret} />
-              <EnvBadge label="SUPABASE_URL" set={status.env.supabaseUrl} />
-              <EnvBadge label="SUPABASE_ANON_KEY" set={status.env.supabaseAnonKey} />
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">⚙️ 시스템 상태</h2>
+              <StatusBadge ok={status.pusher.connected} />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${status.pusher.connected ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'}`}>
+                <span>📡</span> Pusher {status.pusher.connected ? '연결됨' : '미연결'}
+              </div>
+              <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${status.env.supabaseUrl ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'}`}>
+                <span>🗄️</span> Supabase {status.env.supabaseUrl ? '연결됨' : '미설정'}
+              </div>
+              <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${status.env.webhookSecret ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'}`}>
+                <span>🔑</span> Webhook {status.env.webhookSecret ? '설정됨' : '미설정'}
+              </div>
             </div>
           </div>
 
@@ -603,27 +443,27 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* 타입별 통계 */}
-                <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                  <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">이벤트 타입별</p>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(dbStats.typeCounts).map(([type, count]) => (
-                      <span key={type} className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                        {type}: {count}
-                      </span>
-                    ))}
+                {/* 타입별 + 팀별 통계 */}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                    <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">이벤트 타입별</p>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(dbStats.typeCounts).map(([type, count]) => (
+                        <span key={type} className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                          {type}: {count}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-
-                {/* 팀별 통계 */}
-                <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                  <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">팀별 이벤트</p>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(dbStats.teamCounts).map(([team, count]) => (
-                      <span key={team} className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                        {team === '없음' ? '팀 미지정' : `${team}팀`}: {count}
-                      </span>
-                    ))}
+                  <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                    <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">팀별 이벤트</p>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(dbStats.teamCounts).map(([team, count]) => (
+                        <span key={team} className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                          {team === '없음' ? '팀 미지정' : `${team}팀`}: {count}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -654,33 +494,35 @@ export default function AdminPage() {
 
                   <div className="space-y-2">
                     {/* 팀별 삭제 */}
-                    <div className="flex flex-wrap gap-2">
-                      {Object.entries(dbStats.teamCounts).map(([team, count]) => {
-                        const teamKey = team === '없음' ? 'none' : team
-                        const isConfirming = confirmReset === `team-${teamKey}`
-                        return (
-                          <button
-                            key={team}
-                            onClick={() => {
-                              if (isConfirming) {
-                                handleDbReset('team', teamKey)
-                              } else {
-                                setConfirmReset(`team-${teamKey}`)
-                              }
-                            }}
-                            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                              isConfirming
-                                ? 'bg-red-600 text-white animate-pulse'
-                                : 'border border-red-300 text-red-600 hover:bg-red-100 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30'
-                            }`}
-                          >
-                            {isConfirming
-                              ? `정말 삭제? (${count}개)`
-                              : `${team === '없음' ? '팀 미지정' : `${team}팀`} 삭제 (${count})`}
-                          </button>
-                        )
-                      })}
-                    </div>
+                    {Object.keys(dbStats.teamCounts).length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(dbStats.teamCounts).map(([team, count]) => {
+                          const teamKey = team === '없음' ? 'none' : team
+                          const isConfirming = confirmReset === `team-${teamKey}`
+                          return (
+                            <button
+                              key={team}
+                              onClick={() => {
+                                if (isConfirming) {
+                                  handleDbReset('team', teamKey)
+                                } else {
+                                  setConfirmReset(`team-${teamKey}`)
+                                }
+                              }}
+                              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                                isConfirming
+                                  ? 'bg-red-600 text-white animate-pulse'
+                                  : 'border border-red-300 text-red-600 hover:bg-red-100 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30'
+                              }`}
+                            >
+                              {isConfirming
+                                ? `정말 삭제? (${count}개)`
+                                : `${team === '없음' ? '팀 미지정' : `${team}팀`} 삭제 (${count})`}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
 
                     {/* 전체 삭제 */}
                     <div className="border-t border-red-200 pt-2 dark:border-red-800">
@@ -740,7 +582,7 @@ export default function AdminPage() {
           {/* Refresh */}
           <div className="text-center">
             <button
-              onClick={() => { fetchStatus(); fetchDbStats(); }}
+              onClick={() => { fetchStatus(); fetchDiscordGuilds(); fetchDbStats() }}
               disabled={loading}
               className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
             >

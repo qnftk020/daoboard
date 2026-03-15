@@ -19,11 +19,12 @@ export async function GET(req: NextRequest) {
   // 타입별 카운트
   const { data: allEvents } = await supabase
     .from('vibe_events')
-    .select('type, team, timestamp')
+    .select('type, team, timestamp, channel_name')
     .order('timestamp', { ascending: true })
 
   const typeCounts: Record<string, number> = {}
   const teamCounts: Record<string, number> = {}
+  const channelCounts: Record<string, number> = {}
   let oldestEvent: string | null = null
   let newestEvent: string | null = null
 
@@ -38,6 +39,9 @@ export async function GET(req: NextRequest) {
       } else {
         teamCounts['없음'] = (teamCounts['없음'] || 0) + 1
       }
+      if (event.channel_name) {
+        channelCounts[event.channel_name] = (channelCounts[event.channel_name] || 0) + 1
+      }
     }
   }
 
@@ -45,6 +49,7 @@ export async function GET(req: NextRequest) {
     totalEvents: totalEvents || 0,
     typeCounts,
     teamCounts,
+    channelCounts,
     oldestEvent,
     newestEvent,
   })

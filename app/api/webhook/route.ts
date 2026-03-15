@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     timestamp: body.timestamp,
     author: body.author || null,
     team: body.team || null,
+    channel_name: body.channelName || null,
   })
 
   if (error) {
