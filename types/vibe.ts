@@ -13,6 +13,8 @@ export interface VibeEvent {
   timestamp: string
   author?: string
   team?: string // '1' | '2' | '3' | '4' | '5'
+  channelId?: string
+  channelName?: string
 }
 
 export const TEAMS = [

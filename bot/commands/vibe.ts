@@ -82,7 +82,7 @@ export async function handleVibeCommand(interaction: ChatInputCommandInteraction
   }
 
   // Send to Vercel webhook for real-time Pusher update
-  const channelName = interaction.channel && 'name' in interaction.channel ? interaction.channel.name : undefined
+  const channelName = interaction.channel && 'name' in interaction.channel ? (interaction.channel.name ?? undefined) : undefined
   const event = {
     id: interaction.id,
     type: config.type,
