@@ -88,8 +88,12 @@ export default function Dashboard() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Subscribe to Pusher
+  // Subscribe to Pusher (only if keys are configured)
   useEffect(() => {
+    const key = process.env.NEXT_PUBLIC_PUSHER_KEY
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER
+    if (!key || !cluster) return
+
     const pusher = getPusherClient()
     const channel = pusher.subscribe('daoboard')
 
