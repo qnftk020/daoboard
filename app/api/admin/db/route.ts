@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest) {
   const adminCookie = req.cookies.get('admin-token')
   if (!adminCookie) {
+    console.log('DB GET: No admin-token cookie found. Cookies:', req.cookies.getAll().map(c => c.name))
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
