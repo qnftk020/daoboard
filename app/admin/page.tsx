@@ -405,7 +405,17 @@ export default function AdminPage() {
                     <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-gray-200 p-2 dark:border-gray-700">
                       {discordSetup.guilds
                         .find((g) => g.id === selectedGuild)
-                        ?.channels.map((channel) => (
+                        ?.channels
+                        .slice()
+                        .sort((a, b) => {
+                          // 현재 연결된 채널을 맨 위로
+                          const aActive = a.name === status?.discord.channelName
+                          const bActive = b.name === status?.discord.channelName
+                          if (aActive && !bActive) return -1
+                          if (!aActive && bActive) return 1
+                          return 0
+                        })
+                        .map((channel) => (
                           <button
                             key={channel.id}
                             onClick={() => {
@@ -420,6 +430,9 @@ export default function AdminPage() {
                           >
                             <span className="text-gray-400">#</span>
                             <span>{channel.name}</span>
+                            {channel.name === status?.discord.channelName && selectedChannel !== channel.id && (
+                              <span className="ml-auto text-xs text-green-500">현재 연결됨</span>
+                            )}
                             {selectedChannel === channel.id && (
                               <span className="ml-auto text-purple-500">✓</span>
                             )}

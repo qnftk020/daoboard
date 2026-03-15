@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   // Check admin cookie
-  const adminCookie = req.cookies.get('admin_token')
+  const adminCookie = req.cookies.get('admin-token')
   if (!adminCookie) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
