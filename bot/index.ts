@@ -37,6 +37,20 @@ const vibeCommand = new SlashCommandBuilder()
   .addStringOption((option) =>
     option.setName('content').setDescription('내용').setRequired(true)
   )
+  .addStringOption((option) =>
+    option
+      .setName('team')
+      .setDescription('팀 선택')
+      .setRequired(false)
+      .addChoices(
+        { name: '1팀', value: '1' },
+        { name: '2팀', value: '2' },
+        { name: '3팀', value: '3' },
+        { name: '4팀', value: '4' },
+        { name: '5팀', value: '5' },
+        { name: '테스트', value: 'test' },
+      )
+  )
 
 // Register slash commands
 async function registerCommands() {
