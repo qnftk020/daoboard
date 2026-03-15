@@ -82,6 +82,8 @@ export async function GET(req: NextRequest) {
       pusherKey: !!process.env.PUSHER_KEY,
       pusherSecret: !!process.env.PUSHER_SECRET,
       webhookSecret: !!process.env.WEBHOOK_SECRET,
+      supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      supabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     },
   })
 }
