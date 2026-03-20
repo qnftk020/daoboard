@@ -223,6 +223,22 @@ export default function Dashboard() {
               </button>
             )
           })}
+          {/* 테스트 탭 */}
+          <button
+            onClick={() => setSelectedTeam(selectedTeam === 'test' ? null : 'test')}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              selectedTeam === 'test'
+                ? 'bg-gray-900 text-white dark:bg-gray-200 dark:text-gray-900'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+            }`}
+          >
+            <span className="flex items-center gap-1">
+              {selectedTeam !== 'test' && (
+                <span className="h-2 w-2 rounded-full bg-gray-900 dark:bg-gray-300" />
+              )}
+              테스트
+            </span>
+          </button>
         </div>
       </div>
 
