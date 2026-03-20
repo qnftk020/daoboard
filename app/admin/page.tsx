@@ -192,6 +192,7 @@ export default function AdminPage() {
 
   const handleDbReset = async (scope: string, team?: string) => {
     setDbMessage(null)
+    setDbLoading(true)
     try {
       const res = await fetch('/api/admin/db', {
         method: 'DELETE',
@@ -201,13 +202,19 @@ export default function AdminPage() {
       const data = await res.json()
       if (res.ok) {
         setDbMessage({ type: 'success', text: data.message })
-        fetchDbStats()
+        // 전체 삭제 시 즉시 UI 반영
+        if (scope === 'all') {
+          setDbStats({ totalEvents: 0, typeCounts: {}, teamCounts: {}, channelCounts: {}, oldestEvent: null, newestEvent: null })
+        } else {
+          await fetchDbStats()
+        }
       } else {
         setDbMessage({ type: 'error', text: data.error })
       }
     } catch {
       setDbMessage({ type: 'error', text: '요청 실패' })
     }
+    setDbLoading(false)
     setConfirmReset(null)
   }
 
@@ -219,7 +226,7 @@ export default function AdminPage() {
       const data = await res.json()
       if (res.ok) {
         setDbMessage({ type: 'success', text: `${data.message}: ${data.inserted}개 저장, ${data.skipped}개 스킵` })
-        fetchDbStats()
+        await fetchDbStats()
       } else {
         setDbMessage({ type: 'error', text: data.error || '마이그레이션 실패' })
       }
@@ -473,12 +480,12 @@ export default function AdminPage() {
                         </div>
                       )}
 
-                      {/* 미연결 채널 */}
+                      {/* 미연결 채널 (접기/펼치기) */}
                       {unmappedChannels.length > 0 && (
-                        <div>
-                          <p className="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                            채널 선택 → 조 연결 ({unmappedChannels.length}개 미연결)
-                          </p>
+                        <details className="group">
+                          <summary className="mb-2 cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                            채널 선택 → 조 연결 ({unmappedChannels.length}개 미연결) ▸
+                          </summary>
                           <div className="grid gap-1.5 sm:grid-cols-2">
                             {unmappedChannels.map((channel) => {
                               const isLogChannel = status?.discord.channelName === channel.name
@@ -526,7 +533,7 @@ export default function AdminPage() {
                               )
                             })}
                           </div>
-                        </div>
+                        </details>
                       )}
                     </div>
                   )
