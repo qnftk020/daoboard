@@ -78,22 +78,31 @@ export async function handleDaoboardCommand(interaction: ChatInputCommandInterac
 
   // done: 매칭 검증
   if (subcommand === 'done') {
+    const tasks = activeTasks.get(taskKey)
     if (!content) {
-      await interaction.reply({ content: '❌ 완료할 태스크 이름을 입력해주세요.', flags: 64 })
+      // content 없으면 등록된 태스크 목록 보여주기
+      if (tasks && tasks.size > 0) {
+        const taskList = [...tasks].map((t, i) => `${i + 1}. \`${t}\``).join('\n')
+        await interaction.reply({
+          content: `📋 **현재 등록된 태스크:**\n${taskList}\n\n완료할 태스크 이름을 입력해주세요:\n\`/daoboard done [태스크명]\``,
+          flags: 64,
+        })
+      } else {
+        await interaction.reply({ content: '📋 등록된 태스크가 없습니다.', flags: 64 })
+      }
       return
     }
-    const tasks = activeTasks.get(taskKey)
     if (tasks && tasks.size > 0 && !tasks.has(content)) {
       const similar = [...tasks].filter(
         (t) => t.toLowerCase().includes(content.toLowerCase()) || content.toLowerCase().includes(t.toLowerCase())
       )
-      const taskList = [...tasks].map((t) => `\`${t}\``).join(', ')
+      const taskList = [...tasks].map((t) => `  • \`${t}\``).join('\n')
       const suggestion = similar.length > 0
-        ? `\n💡 혹시: ${similar.map((t) => `**${t}**`).join(', ')}`
+        ? `\n\n💡 혹시 이 태스크인가요?\n${similar.map((t) => `  → **${t}**`).join('\n')}`
         : ''
 
       await interaction.reply({
-        content: `⚠️ **"${content}"** 태스크를 찾을 수 없습니다.\n📋 현재 태스크: ${taskList}${suggestion}`,
+        content: `⚠️ **"${content}"** 와 일치하는 태스크가 없습니다.\n\n📋 현재 태스크:\n${taskList}${suggestion}`,
         flags: 64,
       })
       return
@@ -106,17 +115,18 @@ export async function handleDaoboardCommand(interaction: ChatInputCommandInterac
     activeTasks.set(taskKey, new Set())
   }
 
-  // end: content 없어도 OK
-  if (subcommand === 'end' && !content) {
-    // 세션 종료는 content 없이도 가능
-  } else if (!content && subcommand !== 'end') {
+  // end: content 자동 처리
+  if (subcommand === 'end') {
+    // content 없으면 "세션 종료"로 자동 설정
+  } else if (!content) {
     await interaction.reply({ content: '❌ 내용을 입력해주세요.', flags: 64 })
     return
   }
 
   const vibeLogChannelId = process.env.DISCORD_CHANNEL_ID
   const teamTag = team ? `[TEAM:${team}] ` : ''
-  const formattedMessage = `${config.prefix} ${teamTag}${content}`
+  const effectiveContent = content || (subcommand === 'end' ? '세션 종료' : '')
+  const formattedMessage = `${config.prefix} ${teamTag}${effectiveContent}`
 
   // Post to #vibe-log channel
   if (vibeLogChannelId) {
@@ -135,7 +145,7 @@ export async function handleDaoboardCommand(interaction: ChatInputCommandInterac
   const event = {
     id: interaction.id,
     type: config.type,
-    content: content || '세션 종료',
+    content: effectiveContent,
     timestamp: new Date().toISOString(),
     author: interaction.user.username,
     team: team || undefined,
@@ -154,6 +164,6 @@ export async function handleDaoboardCommand(interaction: ChatInputCommandInterac
   const noTeamWarning = !team ? '\n⚠️ 이 채널에 조가 연결되지 않았습니다. Admin에서 설정해주세요.' : ''
 
   await interaction.reply({
-    content: `${config.emoji}${teamLabel} **${config.label}** ${content}${noTeamWarning}`,
+    content: `${config.emoji}${teamLabel} **${config.label}** ${effectiveContent}${noTeamWarning}`,
   })
 }

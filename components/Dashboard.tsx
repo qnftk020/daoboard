@@ -12,8 +12,11 @@ import MilestonesView from './MilestonesView'
 
 type TabId = 'overview' | 'live' | 'tasks' | 'milestones'
 
-const TABS: { id: TabId; label: string; icon: string }[] = [
+const OVERVIEW_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'overview', label: 'Overview', icon: '📊' },
+]
+
+const TEAM_TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'live', label: 'Live', icon: '⚡' },
   { id: 'tasks', label: 'Tasks', icon: '📋' },
   { id: 'milestones', label: 'Milestones', icon: '🏆' },
@@ -186,7 +189,7 @@ export default function Dashboard() {
         {/* Team Quick Filter */}
         <div className="flex flex-wrap gap-1.5">
           <button
-            onClick={() => setSelectedTeam(null)}
+            onClick={() => { setSelectedTeam(null); setActiveTab('overview') }}
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${
               selectedTeam === null
                 ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
@@ -200,7 +203,10 @@ export default function Dashboard() {
             return (
               <button
                 key={team.id}
-                onClick={() => setSelectedTeam(isSelected ? null : team.id)}
+                onClick={() => {
+                  if (isSelected) { setSelectedTeam(null); setActiveTab('overview') }
+                  else { setSelectedTeam(team.id); setActiveTab('live') }
+                }}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                   isSelected
                     ? 'text-white'
@@ -225,7 +231,10 @@ export default function Dashboard() {
           })}
           {/* 테스트 탭 */}
           <button
-            onClick={() => setSelectedTeam(selectedTeam === 'test' ? null : 'test')}
+            onClick={() => {
+              if (selectedTeam === 'test') { setSelectedTeam(null); setActiveTab('overview') }
+              else { setSelectedTeam('test'); setActiveTab('live') }
+            }}
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${
               selectedTeam === 'test'
                 ? 'bg-gray-900 text-white dark:bg-gray-200 dark:text-gray-900'
@@ -242,36 +251,44 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800/80">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition ${
-              activeTab === tab.id
-                ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-900 dark:text-white'
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-            }`}
-          >
-            <span>{tab.icon}</span>
-            <span className="hidden sm:inline">{tab.label}</span>
-            {/* Live badge */}
-            {tab.id === 'live' && activeSessionCount > 0 && activeTab !== 'live' && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] font-bold text-white">
-                {activeSessionCount}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* Tab Navigation — 전체: Overview만, 특정 조: Live/Tasks/Milestones */}
+      {(() => {
+        const tabs = selectedTeam ? TEAM_TABS : OVERVIEW_TABS
+        // 탭이 1개면 네비게이션 숨김
+        if (tabs.length <= 1) return null
+        return (
+          <div className="flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800/80">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition ${
+                  activeTab === tab.id
+                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-900 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
+                {tab.id === 'live' && activeSessionCount > 0 && activeTab !== 'live' && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] font-bold text-white">
+                    {activeSessionCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* Tab Content */}
-      {activeTab === 'overview' && (
+
+      {/* 전체 → Overview */}
+      {!selectedTeam && (
         <OverviewView
-          allEvents={selectedTeam ? filteredEvents : allEvents}
-          tasks={state.tasks}
-          milestones={state.milestones}
+          allEvents={allEvents}
+          tasks={allState.tasks}
+          milestones={allState.milestones}
           teamStats={teamStats}
           onSelectTeam={(teamId) => {
             setSelectedTeam(teamId)
@@ -281,7 +298,8 @@ export default function Dashboard() {
         />
       )}
 
-      {activeTab === 'live' && (
+      {/* 특정 조 → Live / Tasks / Milestones */}
+      {selectedTeam && activeTab === 'live' && (
         <div className="space-y-6">
           <SessionBanner session={state.session} />
           <div className="grid gap-6 md:grid-cols-2">
@@ -310,18 +328,18 @@ export default function Dashboard() {
         </div>
       )}
 
-      {activeTab === 'tasks' && (
+      {selectedTeam && activeTab === 'tasks' && (
         <TasksView
-          tasks={allState.tasks}
-          allEvents={allEvents}
+          tasks={state.tasks}
+          allEvents={filteredEvents}
           selectedTeam={selectedTeam}
         />
       )}
 
-      {activeTab === 'milestones' && (
+      {selectedTeam && activeTab === 'milestones' && (
         <MilestonesView
-          milestones={selectedTeam ? state.milestones : allState.milestones}
-          allEvents={allEvents}
+          milestones={state.milestones}
+          allEvents={filteredEvents}
         />
       )}
     </div>
