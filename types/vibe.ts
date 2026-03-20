@@ -12,9 +12,32 @@ export interface VibeEvent {
   content: string
   timestamp: string
   author?: string
-  team?: string // '1' | '2' | '3' | '4' | '5'
+  team?: string
   channelId?: string
   channelName?: string
+  projectId?: string
+  phaseId?: string
+  dueDate?: string
+  assignee?: string
+  status?: 'active' | 'archived'
+  source?: 'discord' | 'admin' | 'migration' | 'ai-assisted'
+}
+
+export interface Project {
+  id: string
+  name: string
+  startDate: string
+  endDate?: string
+  status: 'active' | 'archived'
+}
+
+export interface Phase {
+  id: string
+  projectId: string
+  name: string
+  order: number
+  startDate?: string
+  endDate?: string
 }
 
 export const TEAMS = [

@@ -4,9 +4,13 @@ import { supabase } from '@/lib/supabase'
 import { VibeEvent } from '@/types/vibe'
 
 export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-webhook-secret')
+  const webhookSecret = process.env.WEBHOOK_SECRET
+  if (!webhookSecret) {
+    return NextResponse.json({ error: 'WEBHOOK_SECRET not configured' }, { status: 500 })
+  }
 
-  if (process.env.WEBHOOK_SECRET && secret !== process.env.WEBHOOK_SECRET) {
+  const secret = req.headers.get('x-webhook-secret')
+  if (secret !== webhookSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

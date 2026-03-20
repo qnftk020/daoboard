@@ -70,6 +70,61 @@ export default function AdminPage() {
   const [confirmReset, setConfirmReset] = useState<string | null>(null)
   const [migrateLoading, setMigrateLoading] = useState(false)
 
+  // 채널-팀 매핑
+  const [channelTeamMap, setChannelTeamMap] = useState<Record<string, string>>({})
+  const [channelMapEntries, setChannelMapEntries] = useState<{ channel_id: string; channel_name: string; team_id: string }[]>([])
+  const [mapMessage, setMapMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const fetchChannelTeamMap = async () => {
+    try {
+      const res = await fetch('/api/admin/channel-map')
+      if (res.ok) {
+        const data = await res.json()
+        setChannelTeamMap(data.map || {})
+        setChannelMapEntries(data.entries || [])
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const handleMapChannel = async (channelId: string, channelName: string, teamId: string) => {
+    setMapMessage(null)
+    try {
+      const res = await fetch('/api/admin/channel-map', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId, channelName, teamId }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setMapMessage({ type: 'success', text: data.message })
+        fetchChannelTeamMap()
+      } else {
+        setMapMessage({ type: 'error', text: data.error })
+      }
+    } catch {
+      setMapMessage({ type: 'error', text: '매핑 저장 실패' })
+    }
+  }
+
+  const handleUnmapChannel = async (channelId: string) => {
+    setMapMessage(null)
+    try {
+      const res = await fetch('/api/admin/channel-map', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId }),
+      })
+      if (res.ok) {
+        setMapMessage({ type: 'success', text: '매핑 해제 완료' })
+        fetchChannelTeamMap()
+      }
+    } catch {
+      setMapMessage({ type: 'error', text: '매핑 해제 실패' })
+    }
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoginError('')
@@ -83,6 +138,7 @@ export default function AdminPage() {
       fetchStatus()
       fetchDiscordGuilds()
       fetchDbStats()
+      fetchChannelTeamMap()
     } else {
       const data = await res.json()
       setLoginError(data.error)
@@ -181,6 +237,7 @@ export default function AdminPage() {
           setLoggedIn(true)
           fetchDiscordGuilds()
           fetchDbStats()
+          fetchChannelTeamMap()
           return res.json()
         }
         return null
@@ -241,16 +298,13 @@ export default function AdminPage() {
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-4 py-8">
       <header className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <a href="/" className="flex items-center gap-3 transition hover:opacity-80">
           <span className="text-2xl">⚡</span>
           <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
             DAOboard <span className="text-sm font-normal text-purple-500">Admin</span>
           </h1>
-        </div>
+        </a>
         <div className="flex items-center gap-3">
-          <a href="/" className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-            ← 대시보드
-          </a>
           <ThemeToggle />
         </div>
       </header>
@@ -295,98 +349,213 @@ export default function AdminPage() {
             )}
           </div>
 
-          {/* 봇 채널 목록 + 활성 채널 표시 */}
+          {/* 채널 관리 (봇 현황 + 팀 매핑 통합) */}
           <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">📋 봇 채널 현황</h2>
-              {discordLoading && (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
-              )}
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">📋 채널 관리</h2>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  봇이 연결된 채널에 팀을 매핑하면 <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">/daoboard</code> 사용 시 팀이 자동 인식됩니다
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {discordLoading && (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />
+                )}
+                <button
+                  onClick={() => { fetchDiscordGuilds(); fetchChannelTeamMap() }}
+                  className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  🔄 새로고침
+                </button>
+              </div>
             </div>
 
-            {discordSetup && discordSetup.guilds.length > 0 ? (
-              discordSetup.guilds.map((guild) => (
-                <div key={guild.id}>
-                  <div className="mb-3 flex items-center gap-2">
-                    {guild.icon ? (
-                      <img src={guild.icon} alt="" className="h-6 w-6 rounded-full" />
-                    ) : (
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-bold text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-                        {guild.name.charAt(0)}
-                      </div>
-                    )}
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">{guild.name}</span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">({guild.channels.length}개 채널)</span>
-                  </div>
+            {status.discord.connected ? (
+              discordSetup && discordSetup.guilds.length > 0 ? (
+                discordSetup.guilds.map((guild) => {
+                  const TEAM_OPTIONS = [
+                    { id: '1', name: '1팀', color: '#8B5CF6' },
+                    { id: '2', name: '2팀', color: '#3B82F6' },
+                    { id: '3', name: '3팀', color: '#10B981' },
+                    { id: '4', name: '4팀', color: '#F59E0B' },
+                    { id: '5', name: '5팀', color: '#EF4444' },
+                  ]
 
-                  {/* 활성 채널 (데이터가 들어온 채널) 먼저 표시 */}
-                  {activeChannelNames.length > 0 && (
-                    <div className="mb-3">
-                      <p className="mb-2 text-xs font-medium text-green-600 dark:text-green-400">📡 데이터 수신 채널</p>
-                      <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                        {activeChannelNames.map((channelName) => (
-                          <div
-                            key={channelName}
-                            className="flex items-center justify-between rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400"
-                          >
-                            <span className="flex items-center gap-2">
-                              <span className="text-green-400">#</span>
-                              <span className="truncate">{channelName}</span>
-                            </span>
-                            <span className="flex items-center gap-1.5 text-xs">
-                              <span className="relative flex h-2 w-2">
-                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-                                <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-                              </span>
-                              {dbStats?.channelCounts?.[channelName] || 0}건
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  // 매핑된 채널과 미매핑 채널 분리
+                  const mappedChannels = guild.channels.filter((ch) => channelTeamMap[ch.id])
+                  const unmappedChannels = guild.channels.filter((ch) => !channelTeamMap[ch.id])
 
-                  {/* 전체 채널 목록 (접기/펼치기) */}
-                  <details className="group">
-                    <summary className="mb-2 cursor-pointer text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                      전체 채널 목록 보기 ▸
-                    </summary>
-                    <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
-                      {guild.channels.map((channel) => {
-                        const isLogChannel = status?.discord.channelName && channel.name === status.discord.channelName
-                        const hasData = activeChannelNames.includes(channel.name)
-                        return (
-                          <div
-                            key={channel.id}
-                            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm ${
-                              isLogChannel
-                                ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400'
-                                : hasData
-                                  ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                                  : 'bg-gray-50 text-gray-500 dark:bg-gray-800 dark:text-gray-500'
-                            }`}
-                          >
-                            <span className="text-gray-400">#</span>
-                            <span className="truncate">{channel.name}</span>
-                            {isLogChannel && (
-                              <span className="ml-auto text-[10px] text-purple-500">로그</span>
-                            )}
-                            {hasData && !isLogChannel && (
-                              <span className="ml-auto flex items-center gap-1 text-[10px] text-green-500">
-                                <span className="h-1 w-1 rounded-full bg-green-500" />
-                                활성
-                              </span>
-                            )}
+                  return (
+                    <div key={guild.id}>
+                      {/* 서버 정보 */}
+                      <div className="mb-4 flex items-center gap-2">
+                        {guild.icon ? (
+                          <img src={guild.icon} alt="" className="h-6 w-6 rounded-full" />
+                        ) : (
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-bold text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                            {guild.name.charAt(0)}
                           </div>
-                        )
-                      })}
+                        )}
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white">{guild.name}</span>
+                        <span className="text-xs text-gray-400">
+                          {guild.channels.length}개 채널 · {mappedChannels.length}개 팀 연결
+                        </span>
+                      </div>
+
+                      {/* 팀이 연결된 채널 */}
+                      {mappedChannels.length > 0 && (
+                        <div className="mb-4">
+                          <p className="mb-2 text-xs font-medium text-green-600 dark:text-green-400">✅ 팀 연결됨</p>
+                          <div className="space-y-1.5">
+                            {mappedChannels.map((channel) => {
+                              const teamId = channelTeamMap[channel.id]
+                              const team = TEAM_OPTIONS.find((t) => t.id === teamId)
+                              const hasData = activeChannelNames.includes(channel.name)
+                              const isLogChannel = status?.discord.channelName === channel.name
+                              return (
+                                <div
+                                  key={channel.id}
+                                  className="flex items-center justify-between rounded-lg bg-green-50 px-4 py-2.5 dark:bg-green-900/20"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-green-500">#</span>
+                                    <span className="text-sm font-medium text-green-700 dark:text-green-400">{channel.name}</span>
+                                    <span className="text-gray-300 dark:text-gray-600">→</span>
+                                    {team && (
+                                      <span
+                                        className="rounded px-2 py-0.5 text-xs font-bold text-white"
+                                        style={{ backgroundColor: team.color }}
+                                      >
+                                        {team.name}
+                                      </span>
+                                    )}
+                                    {hasData && (
+                                      <span className="flex items-center gap-1 text-xs text-green-500">
+                                        <span className="relative flex h-1.5 w-1.5">
+                                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+                                        </span>
+                                        {dbStats?.channelCounts?.[channel.name] || 0}건
+                                      </span>
+                                    )}
+                                    {isLogChannel && (
+                                      <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">로그 채널</span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {/* 팀 변경 */}
+                                    <select
+                                      value={teamId}
+                                      onChange={(e) => {
+                                        if (e.target.value) {
+                                          handleMapChannel(channel.id, channel.name, e.target.value)
+                                        }
+                                      }}
+                                      className="rounded border border-green-300 bg-white px-2 py-1 text-xs text-gray-700 dark:border-green-700 dark:bg-gray-800 dark:text-gray-300"
+                                    >
+                                      {TEAM_OPTIONS.map((t) => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      onClick={() => handleUnmapChannel(channel.id)}
+                                      className="rounded px-2 py-1 text-xs text-red-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20"
+                                    >
+                                      해제
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 미연결 채널 */}
+                      {unmappedChannels.length > 0 && (
+                        <div>
+                          <p className="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+                            채널 선택 → 팀 연결 ({unmappedChannels.length}개 미연결)
+                          </p>
+                          <div className="grid gap-1.5 sm:grid-cols-2">
+                            {unmappedChannels.map((channel) => {
+                              const isLogChannel = status?.discord.channelName === channel.name
+                              const hasData = activeChannelNames.includes(channel.name)
+                              return (
+                                <div
+                                  key={channel.id}
+                                  className={`flex items-center justify-between rounded-lg px-3 py-2 ${
+                                    isLogChannel
+                                      ? 'bg-purple-50 dark:bg-purple-900/20'
+                                      : hasData
+                                        ? 'bg-blue-50 dark:bg-blue-900/20'
+                                        : 'bg-gray-50 dark:bg-gray-800'
+                                  }`}
+                                >
+                                  <span className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+                                    <span className="text-gray-400">#</span>
+                                    <span className="truncate">{channel.name}</span>
+                                    {isLogChannel && (
+                                      <span className="text-[10px] text-purple-500">로그</span>
+                                    )}
+                                    {hasData && !isLogChannel && (
+                                      <span className="flex items-center gap-1 text-[10px] text-blue-500">
+                                        <span className="h-1 w-1 rounded-full bg-blue-500" />
+                                        데이터 있음
+                                      </span>
+                                    )}
+                                  </span>
+                                  <select
+                                    defaultValue=""
+                                    onChange={(e) => {
+                                      if (e.target.value) {
+                                        handleMapChannel(channel.id, channel.name, e.target.value)
+                                        e.target.value = ''
+                                      }
+                                    }}
+                                    className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                                  >
+                                    <option value="">팀 선택</option>
+                                    {TEAM_OPTIONS.map((t) => (
+                                      <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </details>
-                </div>
-              ))
-            ) : !discordLoading ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">채널 정보를 불러올 수 없습니다.</p>
-            ) : null}
+                  )
+                })
+              ) : !discordLoading ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">채널 정보를 불러올 수 없습니다.</p>
+              ) : null
+            ) : (
+              <div className="rounded-lg bg-red-50 p-4 dark:bg-red-900/20">
+                <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                  ⚠️ Discord 봇이 연결되지 않았습니다
+                </p>
+                <p className="mt-1 text-xs text-red-500/70 dark:text-red-400/70">
+                  봇이 연결되어야 채널-팀 매핑을 설정할 수 있습니다. 위 Discord 연동 상태를 확인해주세요.
+                </p>
+              </div>
+            )}
+
+            {/* 결과 메시지 */}
+            {mapMessage && (
+              <div
+                className={`mt-4 rounded-lg p-3 ${
+                  mapMessage.type === 'success'
+                    ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                    : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
+                }`}
+              >
+                <p className="text-sm">{mapMessage.text}</p>
+              </div>
+            )}
           </div>
 
           {/* Pusher + 환경변수 (한 카드로 합침) */}

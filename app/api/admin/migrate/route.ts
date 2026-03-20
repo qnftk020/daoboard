@@ -5,9 +5,9 @@ import { fetchChannelHistory } from '@/lib/discord-api'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
-  // Check admin cookie
-  const adminCookie = req.cookies.get('admin-token')
-  if (!adminCookie) {
+  const { verifySignedToken } = await import('../login/route')
+  const token = req.cookies.get('admin-token')?.value
+  if (!token || !verifySignedToken(token)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -18,28 +18,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: 'No events to migrate', count: 0 })
   }
 
-  // Upsert into Supabase (ignore duplicates)
+  // Batch upsert into Supabase
+  const rows = events.map((event) => ({
+    id: event.id,
+    type: event.type,
+    content: event.content,
+    timestamp: event.timestamp,
+    author: event.author || null,
+    team: event.team || null,
+  }))
+
+  const BATCH_SIZE = 100
   let inserted = 0
   let skipped = 0
 
-  for (const event of events) {
-    const { error } = await supabase.from('vibe_events').upsert(
-      {
-        id: event.id,
-        type: event.type,
-        content: event.content,
-        timestamp: event.timestamp,
-        author: event.author || null,
-        team: event.team || null,
-      },
-      { onConflict: 'id' }
-    )
+  for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+    const batch = rows.slice(i, i + BATCH_SIZE)
+    const { error, count } = await supabase
+      .from('vibe_events')
+      .upsert(batch, { onConflict: 'id', count: 'exact' })
 
     if (error) {
-      console.error('Migration error for event:', event.id, error)
-      skipped++
+      console.error('Migration batch error:', error)
+      skipped += batch.length
     } else {
-      inserted++
+      inserted += count ?? batch.length
     }
   }
 

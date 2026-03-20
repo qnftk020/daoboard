@@ -5,8 +5,19 @@ import { getPusherClient } from '@/lib/pusher-client'
 import { DashboardState, VibeEvent, Session, Task, Milestone, TEAMS } from '@/types/vibe'
 import SessionBanner from './SessionBanner'
 import ProgressBar from './ProgressBar'
-import MilestoneTracker from './MilestoneTracker'
 import Timeline from './Timeline'
+import OverviewView from './OverviewView'
+import TasksView from './TasksView'
+import MilestonesView from './MilestonesView'
+
+type TabId = 'overview' | 'live' | 'tasks' | 'milestones'
+
+const TABS: { id: TabId; label: string; icon: string }[] = [
+  { id: 'overview', label: 'Overview', icon: '📊' },
+  { id: 'live', label: 'Live', icon: '⚡' },
+  { id: 'tasks', label: 'Tasks', icon: '📋' },
+  { id: 'milestones', label: 'Milestones', icon: '🏆' },
+]
 
 function buildStateFromEvents(events: VibeEvent[]): DashboardState {
   let session: Session | null = null
@@ -63,62 +74,33 @@ export default function Dashboard() {
   const [connected, setConnected] = useState(false)
   const [loading, setLoading] = useState(true)
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
-  const [selectedWeek, setSelectedWeek] = useState<number | null>(null) // null = 전체
+  const [activeTab, setActiveTab] = useState<TabId>('overview')
+
+  const MAX_EVENTS = 5000
 
   const addEvent = useCallback((event: VibeEvent) => {
-    setAllEvents((prev) => [...prev, event])
+    setAllEvents((prev) => {
+      const next = [...prev, event]
+      return next.length > MAX_EVENTS ? next.slice(-MAX_EVENTS) : next
+    })
   }, [])
 
-  // Calculate available weeks from events
-  const weekInfo = useMemo(() => {
-    if (allEvents.length === 0) return { weeks: [], startDate: null }
-    const timestamps = allEvents.map((e) => new Date(e.timestamp).getTime())
-    const earliest = new Date(Math.min(...timestamps))
-    // Start of the first week (Monday)
-    const startDate = new Date(earliest)
-    startDate.setHours(0, 0, 0, 0)
-    const day = startDate.getDay()
-    startDate.setDate(startDate.getDate() - (day === 0 ? 6 : day - 1)) // Monday
-
-    const latest = new Date(Math.max(...timestamps))
-    const totalWeeks = Math.ceil((latest.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000))
-
-    const weeks = Array.from({ length: Math.max(totalWeeks, 1) }, (_, i) => ({
-      num: i + 1,
-      start: new Date(startDate.getTime() + i * 7 * 24 * 60 * 60 * 1000),
-      end: new Date(startDate.getTime() + (i + 1) * 7 * 24 * 60 * 60 * 1000),
-    }))
-
-    return { weeks, startDate }
-  }, [allEvents])
-
-  // Filter events by team + week
+  // Filter events by team
   const filteredEvents = useMemo(() => {
-    let events = allEvents
-    if (selectedTeam) {
-      if (selectedTeam === 'test') {
-        // 테스트 탭: team이 'test'이거나 team이 없는(undefined) 이벤트
-        events = events.filter((e) => e.team === 'test' || !e.team)
-      } else {
-        events = events.filter((e) => e.team === selectedTeam)
-      }
+    if (!selectedTeam) return allEvents
+    if (selectedTeam === 'test') {
+      return allEvents.filter((e) => e.team === 'test' || !e.team)
     }
-    if (selectedWeek !== null && weekInfo.weeks[selectedWeek - 1]) {
-      const week = weekInfo.weeks[selectedWeek - 1]
-      events = events.filter((e) => {
-        const t = new Date(e.timestamp).getTime()
-        return t >= week.start.getTime() && t < week.end.getTime()
-      })
-    }
-    return events
-  }, [allEvents, selectedTeam, selectedWeek, weekInfo])
+    return allEvents.filter((e) => e.team === selectedTeam)
+  }, [allEvents, selectedTeam])
 
   // Build state from filtered events
   const state = useMemo(() => buildStateFromEvents(filteredEvents), [filteredEvents])
+  const allState = useMemo(() => buildStateFromEvents(allEvents), [allEvents])
 
   // Team stats
   const teamStats = useMemo(() => {
-    const stats: Record<string, { events: number; tasks: number; tasksDone: number; milestones: number; hasActiveSession: boolean }> = {}
+    const stats: Record<string, { events: number; tasks: number; tasksDone: number; milestones: number; hasActiveSession: boolean; lastActivity: string | null }> = {}
     for (const team of TEAMS) {
       const teamEvents = team.id === 'test'
         ? allEvents.filter((e) => e.team === 'test' || !e.team)
@@ -131,6 +113,7 @@ export default function Dashboard() {
       const hasActiveSession = lastStart
         ? !lastEnd || new Date(lastStart.timestamp) > new Date(lastEnd.timestamp)
         : false
+      const lastActivity = teamEvents.length > 0 ? teamEvents[teamEvents.length - 1].timestamp : null
 
       stats[team.id] = {
         events: teamEvents.length,
@@ -138,10 +121,16 @@ export default function Dashboard() {
         tasksDone: teamTasksDone.length,
         milestones: teamMilestones.length,
         hasActiveSession,
+        lastActivity,
       }
     }
     return stats
   }, [allEvents])
+
+  // Active session count for Live tab badge
+  const activeSessionCount = useMemo(() => {
+    return TEAMS.filter((t) => t.id !== 'test' && teamStats[t.id]?.hasActiveSession).length
+  }, [teamStats])
 
   // Load initial history
   useEffect(() => {
@@ -187,59 +176,47 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Connection status */}
-      <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span className={`h-2 w-2 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'}`} />
-        {connected ? 'Pusher 연결됨' : '연결 대기 중...'}
-      </div>
-
-      {/* Team Tabs */}
-      <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-900">
-        <div className="mb-3 flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">팀별 보기</span>
+      {/* Connection Status + Team Filter */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <span className={`h-2 w-2 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'}`} />
+          {connected ? 'Pusher 연결됨' : '연결 대기 중...'}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {/* 전체 탭 */}
+
+        {/* Team Quick Filter */}
+        <div className="flex flex-wrap gap-1.5">
           <button
             onClick={() => setSelectedTeam(null)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
               selectedTeam === null
                 ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
             }`}
           >
             전체
-            <span className="ml-1.5 text-xs opacity-60">{allEvents.length}</span>
           </button>
-
-          {/* 팀별 탭 */}
-          {TEAMS.map((team) => {
-            const stats = teamStats[team.id]
+          {TEAMS.filter((t) => t.id !== 'test').map((team) => {
             const isSelected = selectedTeam === team.id
             return (
               <button
                 key={team.id}
-                onClick={() => setSelectedTeam(team.id)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                onClick={() => setSelectedTeam(isSelected ? null : team.id)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                   isSelected
                     ? 'text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
                 }`}
                 style={isSelected ? { backgroundColor: team.color } : undefined}
               >
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1">
                   {!isSelected && (
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: team.color }}
-                    />
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: team.color }} />
                   )}
                   {team.name}
-                  <span className="text-xs opacity-60">{stats.events}</span>
-                  {stats.hasActiveSession && (
-                    <span className="relative flex h-2 w-2">
+                  {teamStats[team.id]?.hasActiveSession && (
+                    <span className="relative flex h-1.5 w-1.5">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
                     </span>
                   )}
                 </span>
@@ -249,123 +226,88 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Week Filter */}
-      {weekInfo.weeks.length > 1 && (
-        <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-900">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-500 dark:text-gray-400">📅 주차별 보기</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setSelectedWeek(null)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                selectedWeek === null
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
-              }`}
-            >
-              전체
-            </button>
-            {weekInfo.weeks.map((week) => {
-              const label = `${week.num}주차`
-              const dateRange = `${week.start.getMonth() + 1}/${week.start.getDate()}~${week.end.getMonth() + 1}/${week.end.getDate()}`
-              const isCurrentWeek = new Date() >= week.start && new Date() < week.end
-              return (
-                <button
-                  key={week.num}
-                  onClick={() => setSelectedWeek(week.num)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                    selectedWeek === week.num
-                      ? 'bg-purple-600 text-white'
-                      : isCurrentWeek
-                        ? 'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  {label}
-                  <span className="ml-1 opacity-50">{dateRange}</span>
-                  {isCurrentWeek && selectedWeek !== week.num && (
-                    <span className="ml-1 text-[10px]">now</span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Team Overview Cards (전체 보기일 때만) */}
-      {selectedTeam === null && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          {TEAMS.filter((t) => t.id !== 'test').map((team) => {
-            const stats = teamStats[team.id]
-            const completionRate = stats.tasks > 0 ? Math.round((stats.tasksDone / stats.tasks) * 100) : 0
-            return (
-              <button
-                key={team.id}
-                onClick={() => setSelectedTeam(team.id)}
-                className="group rounded-xl bg-white p-4 text-left shadow-sm transition hover:shadow-md dark:bg-gray-900"
-              >
-                <div className="mb-2 flex items-center justify-between">
-                  <span
-                    className="rounded-md px-2 py-0.5 text-xs font-bold text-white"
-                    style={{ backgroundColor: team.color }}
-                  >
-                    {team.name}
-                  </span>
-                  {stats.hasActiveSession && (
-                    <span className="flex items-center gap-1 text-xs text-green-500">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-                        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
-                      </span>
-                      Live
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">이벤트</span>
-                    <span className="text-lg font-bold text-gray-900 dark:text-white">{stats.events}</span>
-                  </div>
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">태스크</span>
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                      {stats.tasksDone}/{stats.tasks}
-                    </span>
-                  </div>
-                  {/* Mini progress bar */}
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${completionRate}%`,
-                        backgroundColor: team.color,
-                      }}
-                    />
-                  </div>
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">마일스톤</span>
-                    <span className="text-sm text-gray-700 dark:text-gray-300">{stats.milestones}🏆</span>
-                  </div>
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Session Banner */}
-      <SessionBanner session={state.session} />
-
-      {/* Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <ProgressBar tasks={state.tasks} />
-        <MilestoneTracker milestones={state.milestones} />
+      {/* Tab Navigation */}
+      <div className="flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800/80">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition ${
+              activeTab === tab.id
+                ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-900 dark:text-white'
+                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+            }`}
+          >
+            <span>{tab.icon}</span>
+            <span className="hidden sm:inline">{tab.label}</span>
+            {/* Live badge */}
+            {tab.id === 'live' && activeSessionCount > 0 && activeTab !== 'live' && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] font-bold text-white">
+                {activeSessionCount}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* Timeline */}
-      <Timeline events={state.events} />
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <OverviewView
+          allEvents={selectedTeam ? filteredEvents : allEvents}
+          tasks={state.tasks}
+          milestones={state.milestones}
+          teamStats={teamStats}
+          onSelectTeam={(teamId) => {
+            setSelectedTeam(teamId)
+            setActiveTab('live')
+          }}
+          onSwitchToLive={() => setActiveTab('live')}
+        />
+      )}
+
+      {activeTab === 'live' && (
+        <div className="space-y-6">
+          <SessionBanner session={state.session} />
+          <div className="grid gap-6 md:grid-cols-2">
+            <ProgressBar tasks={state.tasks} />
+            <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                🏆 마일스톤
+              </h3>
+              {state.milestones.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {state.milestones.map((m) => (
+                    <span
+                      key={m.id}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                    >
+                      🏆 {m.name}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 dark:text-gray-500">아직 달성된 마일스톤이 없습니다</p>
+              )}
+            </div>
+          </div>
+          <Timeline events={state.events} />
+        </div>
+      )}
+
+      {activeTab === 'tasks' && (
+        <TasksView
+          tasks={allState.tasks}
+          allEvents={allEvents}
+          selectedTeam={selectedTeam}
+        />
+      )}
+
+      {activeTab === 'milestones' && (
+        <MilestonesView
+          milestones={selectedTeam ? state.milestones : allState.milestones}
+          allEvents={allEvents}
+        />
+      )}
     </div>
   )
 }

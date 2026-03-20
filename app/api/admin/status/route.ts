@@ -64,8 +64,9 @@ async function checkPusher(): Promise<{ connected: boolean; error?: string }> {
 }
 
 export async function GET(req: NextRequest) {
+  const { verifySignedToken } = await import('../login/route')
   const token = req.cookies.get('admin-token')?.value
-  if (!token) {
+  if (!token || !verifySignedToken(token)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

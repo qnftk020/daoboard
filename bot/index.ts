@@ -1,6 +1,6 @@
 import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } from 'discord.js'
 import dotenv from 'dotenv'
-import { handleVibeCommand } from './commands/vibe'
+import { handleDaoboardCommand, loadChannelTeamMap } from './commands/daoboard'
 
 dotenv.config({ path: '.env.local' })
 
@@ -16,65 +16,71 @@ const client = new Client({
   ],
 })
 
-// Slash command definition
-const vibeCommand = new SlashCommandBuilder()
-  .setName('vibe')
-  .setDescription('바이브 코딩 세션 관리')
-  .addStringOption((option) =>
-    option
-      .setName('command')
-      .setDescription('명령어')
-      .setRequired(true)
-      .addChoices(
-        { name: 'start - 세션 시작', value: 'start' },
-        { name: 'log - 진행상황 기록', value: 'log' },
-        { name: 'milestone - 마일스톤 달성', value: 'milestone' },
-        { name: 'task add - 태스크 추가', value: 'task_add' },
-        { name: 'task done - 태스크 완료', value: 'task_done' },
-        { name: 'end - 세션 종료', value: 'end' },
-      )
+// /daoboard 명령어 (서브커맨드 방식)
+const daoboardCommand = new SlashCommandBuilder()
+  .setName('daoboard')
+  .setDescription('DAOboard 프로젝트 기록')
+  .addSubcommand((sub) =>
+    sub
+      .setName('start')
+      .setDescription('🚀 세션 시작')
+      .addStringOption((opt) => opt.setName('content').setDescription('세션 이름').setRequired(true))
   )
-  .addStringOption((option) =>
-    option.setName('content').setDescription('내용').setRequired(true)
+  .addSubcommand((sub) =>
+    sub
+      .setName('log')
+      .setDescription('📝 진행상황 기록')
+      .addStringOption((opt) => opt.setName('content').setDescription('기록할 내용').setRequired(true))
   )
-  .addStringOption((option) =>
-    option
-      .setName('team')
-      .setDescription('팀 선택')
-      .setRequired(false)
-      .addChoices(
-        { name: '1팀', value: '1' },
-        { name: '2팀', value: '2' },
-        { name: '3팀', value: '3' },
-        { name: '4팀', value: '4' },
-        { name: '5팀', value: '5' },
-        { name: '테스트', value: 'test' },
-      )
+  .addSubcommand((sub) =>
+    sub
+      .setName('task')
+      .setDescription('📋 태스크 추가')
+      .addStringOption((opt) => opt.setName('content').setDescription('태스크 이름').setRequired(true))
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName('done')
+      .setDescription('✅ 태스크 완료')
+      .addStringOption((opt) => opt.setName('content').setDescription('완료한 태스크 이름').setRequired(true))
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName('milestone')
+      .setDescription('🏆 마일스톤 달성')
+      .addStringOption((opt) => opt.setName('content').setDescription('마일스톤 이름').setRequired(true))
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName('end')
+      .setDescription('🏁 세션 종료')
+      .addStringOption((opt) => opt.setName('content').setDescription('종료 메모 (선택)').setRequired(false))
   )
 
-// Register slash commands
+// Register commands
 async function registerCommands() {
   const rest = new REST({ version: '10' }).setToken(DISCORD_BOT_TOKEN)
   try {
     console.log('🔄 슬래시 커맨드 등록 중...')
     await rest.put(Routes.applicationGuildCommands(CLIENT_ID, DISCORD_GUILD_ID), {
-      body: [vibeCommand.toJSON()],
+      body: [daoboardCommand.toJSON()],
     })
-    console.log('✅ 슬래시 커맨드 등록 완료!')
+    console.log('✅ /daoboard 커맨드 등록 완료!')
   } catch (error) {
     console.error('❌ 커맨드 등록 실패:', error)
   }
 }
 
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`⚡ DAOboard Bot 온라인! (${client.user?.tag})`)
-  registerCommands()
+  await registerCommands()
+  await loadChannelTeamMap()
 })
 
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return
-  if (interaction.commandName === 'vibe') {
-    await handleVibeCommand(interaction)
+  if (interaction.commandName === 'daoboard') {
+    await handleDaoboardCommand(interaction)
   }
 })
 

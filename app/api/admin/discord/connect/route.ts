@@ -3,8 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
+  const { verifySignedToken } = await import('../../login/route')
   const token = req.cookies.get('admin-token')?.value
-  if (!token) {
+  if (!token || !verifySignedToken(token)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
