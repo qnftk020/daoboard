@@ -67,13 +67,16 @@ export default function AdminPage() {
   const [dbStats, setDbStats] = useState<DbStats | null>(null)
   const [dbLoading, setDbLoading] = useState(false)
   const [dbMessage, setDbMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [confirmReset, setConfirmReset] = useState<string | null>(null)
+
   const [migrateLoading, setMigrateLoading] = useState(false)
 
-  // 채널-팀 매핑
+  // 채널-조 매핑
   const [channelTeamMap, setChannelTeamMap] = useState<Record<string, string>>({})
   const [channelMapEntries, setChannelMapEntries] = useState<{ channel_id: string; channel_name: string; team_id: string }[]>([])
   const [mapMessage, setMapMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // 삭제 확인 모달
+  const [resetModal, setResetModal] = useState<{ scope: string; team?: string; label: string; count: number } | null>(null)
 
   const fetchChannelTeamMap = async () => {
     try {
@@ -215,7 +218,6 @@ export default function AdminPage() {
       setDbMessage({ type: 'error', text: '요청 실패' })
     }
     setDbLoading(false)
-    setConfirmReset(null)
   }
 
   const handleMigrate = async () => {
@@ -675,26 +677,14 @@ export default function AdminPage() {
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(dbStats.teamCounts).map(([team, count]) => {
                           const teamKey = team === '없음' ? 'none' : team
-                          const isConfirming = confirmReset === `team-${teamKey}`
+                          const label = team === '없음' ? '조 미지정' : `${team}조`
                           return (
                             <button
                               key={team}
-                              onClick={() => {
-                                if (isConfirming) {
-                                  handleDbReset('team', teamKey)
-                                } else {
-                                  setConfirmReset(`team-${teamKey}`)
-                                }
-                              }}
-                              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                                isConfirming
-                                  ? 'bg-red-600 text-white animate-pulse'
-                                  : 'border border-red-300 text-red-600 hover:bg-red-100 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30'
-                              }`}
+                              onClick={() => setResetModal({ scope: 'team', team: teamKey, label, count })}
+                              className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-100 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30"
                             >
-                              {isConfirming
-                                ? `정말 삭제? (${count}개)`
-                                : `${team === '없음' ? '조 미지정' : `${team}조`} 삭제 (${count})`}
+                              {label} 삭제 ({count})
                             </button>
                           )
                         })}
@@ -703,32 +693,12 @@ export default function AdminPage() {
 
                     {/* 전체 삭제 */}
                     <div className="border-t border-red-200 pt-2 dark:border-red-800">
-                      {confirmReset === 'all' ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-red-600 dark:text-red-400">
-                            ⚠️ 전체 {dbStats.totalEvents}개 이벤트가 삭제됩니다. 정말요?
-                          </span>
-                          <button
-                            onClick={() => handleDbReset('all')}
-                            className="rounded-lg bg-red-600 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-red-700"
-                          >
-                            삭제 확인
-                          </button>
-                          <button
-                            onClick={() => setConfirmReset(null)}
-                            className="rounded-lg border border-gray-300 px-4 py-1.5 text-xs font-medium text-gray-600 transition hover:bg-gray-100 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
-                          >
-                            취소
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmReset('all')}
-                          className="rounded-lg border border-red-400 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30"
-                        >
-                          🗑️ 전체 데이터 초기화 ({dbStats.totalEvents}개)
-                        </button>
-                      )}
+                      <button
+                        onClick={() => setResetModal({ scope: 'all', label: '전체 데이터', count: dbStats.totalEvents })}
+                        className="rounded-lg border border-red-400 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30"
+                      >
+                        🗑️ 전체 데이터 초기화 ({dbStats.totalEvents}개)
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -768,6 +738,44 @@ export default function AdminPage() {
           </div>
         </div>
       ) : null}
+
+      {/* 삭제 확인 모달 */}
+      {resetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+            <div className="mb-4 text-center">
+              <span className="text-4xl">⚠️</span>
+              <h3 className="mt-3 text-lg font-bold text-gray-900 dark:text-white">
+                정말 완전히 초기화하시겠어요?
+              </h3>
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                <span className="font-semibold text-red-600 dark:text-red-400">{resetModal.label}</span>의{' '}
+                <span className="font-semibold text-red-600 dark:text-red-400">{resetModal.count}개</span> 이벤트가
+                영구적으로 삭제됩니다.
+              </p>
+              <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">이 작업은 되돌릴 수 없습니다.</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setResetModal(null)}
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                아니오
+              </button>
+              <button
+                onClick={async () => {
+                  await handleDbReset(resetModal.scope, resetModal.team)
+                  setResetModal(null)
+                }}
+                disabled={dbLoading}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-red-700 disabled:opacity-50"
+              >
+                {dbLoading ? '삭제 중...' : '네, 삭제합니다'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
