@@ -38,7 +38,6 @@ function getDateKey(iso: string): string {
 
 const TYPE_COLORS: Record<string, string> = {
   SESSION_START: 'border-purple-400 bg-purple-50 dark:bg-purple-900/20',
-  LOG: 'border-blue-300 bg-blue-50 dark:bg-blue-900/20',
   MILESTONE: 'border-amber-400 bg-amber-50 dark:bg-amber-900/20',
   TASK_ADD: 'border-cyan-300 bg-cyan-50 dark:bg-cyan-900/20',
   TASK_DONE: 'border-green-400 bg-green-50 dark:bg-green-900/20',
@@ -71,22 +70,26 @@ export default function Timeline({ events }: Props) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [events.length])
 
+  // 핵심 이벤트와 로그 분리
+  const keyEvents = events.filter((e) => e.type !== 'LOG')
+  const logEvents = events.filter((e) => e.type === 'LOG')
+
   if (events.length === 0) {
     return (
       <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          📜 세션 타임라인
+          📜 타임라인
         </h3>
-        <p className="text-sm text-gray-400 dark:text-gray-500">이벤트가 없습니다. Discord에서 /vibe 명령어를 사용해 보세요.</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500">이벤트가 없습니다. Discord에서 /daoboard 명령어를 사용해 보세요.</p>
       </div>
     )
   }
 
-  // Precompute date separators to avoid mutable variable during render
+  // Precompute date separators for key events
   const dateSeparators = new Set<number>()
   let prevDateKey = ''
-  for (let i = 0; i < events.length; i++) {
-    const dateKey = getDateKey(events[i].timestamp)
+  for (let i = 0; i < keyEvents.length; i++) {
+    const dateKey = getDateKey(keyEvents[i].timestamp)
     if (dateKey !== prevDateKey) {
       dateSeparators.add(i)
       prevDateKey = dateKey
@@ -94,55 +97,97 @@ export default function Timeline({ events }: Props) {
   }
 
   return (
-    <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          📜 세션 타임라인
-        </h3>
-        <span className="text-xs text-gray-400 dark:text-gray-500">
-          {events.length}개 이벤트
-        </span>
+    <div className="space-y-4">
+      {/* 핵심 이벤트 타임라인 */}
+      <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            📜 타임라인
+          </h3>
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            {keyEvents.length}개 이벤트
+          </span>
+        </div>
+
+        {keyEvents.length > 0 ? (
+          <div className="max-h-[400px] space-y-2 overflow-y-auto pr-1">
+            {keyEvents.map((event, i) => {
+              const teamColor = getTeamColor(event.team)
+              return (
+                <div key={event.id}>
+                  {dateSeparators.has(i) && (
+                    <div className="flex items-center gap-3 py-2">
+                      <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                      <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                        {formatDate(event.timestamp)}
+                      </span>
+                      <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                    </div>
+                  )}
+                  <div
+                    className={`flex items-start gap-3 rounded-xl border-l-4 px-4 py-3 transition-all ${TYPE_COLORS[event.type] ?? ''} ${i === keyEvents.length - 1 ? 'animate-pulse-once' : ''}`}
+                    style={teamColor ? { borderLeftColor: teamColor } : undefined}
+                  >
+                    <span className="mt-0.5 text-lg">{EVENT_ICONS[event.type]}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {event.content}
+                      </p>
+                      <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+                        {formatTime(event.timestamp)}
+                        {event.author && ` · ${event.author}`}
+                        {event.team && <TeamBadge teamId={event.team} />}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+            <div ref={logEvents.length === 0 ? bottomRef : undefined} />
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400 dark:text-gray-500">세션, 태스크, 마일스톤 이벤트가 없습니다.</p>
+        )}
       </div>
 
-      <div className="max-h-[480px] space-y-2 overflow-y-auto pr-1">
-        {events.map((event, i) => {
-          const teamColor = getTeamColor(event.team)
-
-          return (
-            <div key={event.id}>
-              {/* Date Separator */}
-              {dateSeparators.has(i) && (
-                <div className="flex items-center gap-3 py-2">
-                  <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
-                  <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
-                    {formatDate(event.timestamp)}
-                  </span>
-                  <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
-                </div>
-              )}
-
-              {/* Event Card */}
-              <div
-                className={`flex items-start gap-3 rounded-xl border-l-4 px-4 py-3 transition-all ${TYPE_COLORS[event.type] ?? ''} ${i === events.length - 1 ? 'animate-pulse-once' : ''}`}
-                style={teamColor ? { borderLeftColor: teamColor } : undefined}
-              >
-                <span className="mt-0.5 text-lg">{EVENT_ICONS[event.type]}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {event.content}
-                  </p>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
+      {/* 활동 로그 (접기/펼치기) */}
+      {logEvents.length > 0 && (
+        <div className="rounded-2xl bg-white shadow-sm dark:bg-gray-900">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between px-6 py-4">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                📝 활동 로그
+              </h3>
+              <span className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                {logEvents.length}개
+                <span className="transition group-open:rotate-180">▾</span>
+              </span>
+            </summary>
+            <div className="max-h-[320px] space-y-1 overflow-y-auto px-6 pb-4">
+              {logEvents.map((event, i) => (
+                <div
+                  key={event.id}
+                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm ${i === logEvents.length - 1 ? 'animate-pulse-once bg-blue-50 dark:bg-blue-900/20' : 'bg-gray-50 dark:bg-gray-800/50'}`}
+                >
+                  <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
                     {formatTime(event.timestamp)}
-                    {event.author && ` · ${event.author}`}
-                    {event.team && <TeamBadge teamId={event.team} />}
-                  </p>
+                  </span>
+                  <span className="min-w-0 flex-1 text-gray-700 dark:text-gray-300 truncate">
+                    {event.content}
+                  </span>
+                  {event.author && (
+                    <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
+                      {event.author}
+                    </span>
+                  )}
+                  {event.team && <TeamBadge teamId={event.team} />}
                 </div>
-              </div>
+              ))}
+              <div ref={bottomRef} />
             </div>
-          )
-        })}
-        <div ref={bottomRef} />
-      </div>
+          </details>
+        </div>
+      )}
     </div>
   )
 }
