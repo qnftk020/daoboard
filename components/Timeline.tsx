@@ -80,7 +80,7 @@ export default function Timeline({ events }: Props) {
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           📜 타임라인
         </h3>
-        <p className="text-sm text-gray-400 dark:text-gray-500">이벤트가 없습니다. Discord에서 /daoboard 명령어를 사용해 보세요.</p>
+        <p className="text-sm text-gray-400 dark:text-gray-500">이벤트가 없습니다. Discord에서 <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">/daoboard</code> 명령어를 사용해 보세요.</p>
       </div>
     )
   }

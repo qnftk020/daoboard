@@ -49,7 +49,7 @@ export default function MilestonesView({ milestones, allEvents }: Props) {
           <span className="text-4xl">🏆</span>
           <p className="mt-3 text-gray-500 dark:text-gray-400">아직 달성된 마일스톤이 없습니다</p>
           <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">
-            Discord에서 <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">/vibe milestone</code>으로 기록하세요
+            Discord에서 <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">/daoboard milestone</code>으로 기록하세요
           </p>
         </div>
       </div>

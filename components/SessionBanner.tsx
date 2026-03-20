@@ -42,7 +42,7 @@ export default function SessionBanner({ session }: Props) {
       <div className="rounded-2xl border border-dashed border-gray-300 bg-white/50 p-6 text-center dark:border-gray-700 dark:bg-white/5">
         <p className="text-gray-500 dark:text-gray-400">세션이 아직 시작되지 않았습니다</p>
         <p className="mt-1 text-sm text-gray-400 dark:text-gray-500">
-          Discord에서 <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">/vibe start</code> 으로 시작하세요
+          Discord에서 <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">/daoboard start</code> 으로 시작하세요
         </p>
       </div>
     )
