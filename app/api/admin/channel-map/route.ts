@@ -33,7 +33,7 @@ export async function PUT(req: NextRequest) {
   const { channelId, channelName, teamId } = await req.json()
 
   if (!channelId || !teamId) {
-    return NextResponse.json({ error: '채널과 팀을 선택해주세요.' }, { status: 400 })
+    return NextResponse.json({ error: '채널과 조를 선택해주세요.' }, { status: 400 })
   }
 
   const { error } = await supabase
@@ -47,7 +47,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true, message: `#${channelName || channelId} → ${teamId}팀 연결 완료` })
+  return NextResponse.json({ ok: true, message: `#${channelName || channelId} → ${teamId}조 연결 완료` })
 }
 
 // DELETE: 매핑 삭제

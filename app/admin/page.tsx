@@ -349,13 +349,13 @@ export default function AdminPage() {
             )}
           </div>
 
-          {/* 채널 관리 (봇 현황 + 팀 매핑 통합) */}
+          {/* 채널 관리 (봇 현황 + 조 매핑 통합) */}
           <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">📋 채널 관리</h2>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  봇이 연결된 채널에 팀을 매핑하면 <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">/daoboard</code> 사용 시 팀이 자동 인식됩니다
+                  봇이 연결된 채널에 조를 매핑하면 <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">/daoboard</code> 사용 시 조가 자동 인식됩니다
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -375,11 +375,12 @@ export default function AdminPage() {
               discordSetup && discordSetup.guilds.length > 0 ? (
                 discordSetup.guilds.map((guild) => {
                   const TEAM_OPTIONS = [
-                    { id: '1', name: '1팀', color: '#8B5CF6' },
-                    { id: '2', name: '2팀', color: '#3B82F6' },
-                    { id: '3', name: '3팀', color: '#10B981' },
-                    { id: '4', name: '4팀', color: '#F59E0B' },
-                    { id: '5', name: '5팀', color: '#EF4444' },
+                    { id: '1', name: '1조', color: '#8B5CF6' },
+                    { id: '2', name: '2조', color: '#3B82F6' },
+                    { id: '3', name: '3조', color: '#10B981' },
+                    { id: '4', name: '4조', color: '#F59E0B' },
+                    { id: '5', name: '5조', color: '#EF4444' },
+                    { id: '6', name: '6조', color: '#EC4899' },
                   ]
 
                   // 매핑된 채널과 미매핑 채널 분리
@@ -399,14 +400,14 @@ export default function AdminPage() {
                         )}
                         <span className="text-sm font-semibold text-gray-900 dark:text-white">{guild.name}</span>
                         <span className="text-xs text-gray-400">
-                          {guild.channels.length}개 채널 · {mappedChannels.length}개 팀 연결
+                          {guild.channels.length}개 채널 · {mappedChannels.length}개 조 연결
                         </span>
                       </div>
 
-                      {/* 팀이 연결된 채널 */}
+                      {/* 조가 연결된 채널 */}
                       {mappedChannels.length > 0 && (
                         <div className="mb-4">
-                          <p className="mb-2 text-xs font-medium text-green-600 dark:text-green-400">✅ 팀 연결됨</p>
+                          <p className="mb-2 text-xs font-medium text-green-600 dark:text-green-400">✅ 조 연결됨</p>
                           <div className="space-y-1.5">
                             {mappedChannels.map((channel) => {
                               const teamId = channelTeamMap[channel.id]
@@ -444,7 +445,7 @@ export default function AdminPage() {
                                     )}
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {/* 팀 변경 */}
+                                    {/* 조 변경 */}
                                     <select
                                       value={teamId}
                                       onChange={(e) => {
@@ -476,7 +477,7 @@ export default function AdminPage() {
                       {unmappedChannels.length > 0 && (
                         <div>
                           <p className="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                            채널 선택 → 팀 연결 ({unmappedChannels.length}개 미연결)
+                            채널 선택 → 조 연결 ({unmappedChannels.length}개 미연결)
                           </p>
                           <div className="grid gap-1.5 sm:grid-cols-2">
                             {unmappedChannels.map((channel) => {
@@ -516,7 +517,7 @@ export default function AdminPage() {
                                     }}
                                     className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300"
                                   >
-                                    <option value="">팀 선택</option>
+                                    <option value="">조 선택</option>
                                     {TEAM_OPTIONS.map((t) => (
                                       <option key={t.id} value={t.id}>{t.name}</option>
                                     ))}
@@ -539,7 +540,7 @@ export default function AdminPage() {
                   ⚠️ Discord 봇이 연결되지 않았습니다
                 </p>
                 <p className="mt-1 text-xs text-red-500/70 dark:text-red-400/70">
-                  봇이 연결되어야 채널-팀 매핑을 설정할 수 있습니다. 위 Discord 연동 상태를 확인해주세요.
+                  봇이 연결되어야 채널-조 매핑을 설정할 수 있습니다. 위 Discord 연동 상태를 확인해주세요.
                 </p>
               </div>
             )}
@@ -625,11 +626,11 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-                    <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">팀별 이벤트</p>
+                    <p className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">조별 이벤트</p>
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(dbStats.teamCounts).map(([team, count]) => (
                         <span key={team} className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                          {team === '없음' ? '팀 미지정' : `${team}팀`}: {count}
+                          {team === '없음' ? '조 미지정' : `${team}조`}: {count}
                         </span>
                       ))}
                     </div>
@@ -662,7 +663,7 @@ export default function AdminPage() {
                   <p className="mb-3 text-sm font-medium text-red-700 dark:text-red-400">⚠️ 데이터 초기화</p>
 
                   <div className="space-y-2">
-                    {/* 팀별 삭제 */}
+                    {/* 조별 삭제 */}
                     {Object.keys(dbStats.teamCounts).length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(dbStats.teamCounts).map(([team, count]) => {
@@ -686,7 +687,7 @@ export default function AdminPage() {
                             >
                               {isConfirming
                                 ? `정말 삭제? (${count}개)`
-                                : `${team === '없음' ? '팀 미지정' : `${team}팀`} 삭제 (${count})`}
+                                : `${team === '없음' ? '조 미지정' : `${team}조`} 삭제 (${count})`}
                             </button>
                           )
                         })}

@@ -23,7 +23,7 @@ export async function loadChannelTeamMap(): Promise<void> {
   if (envMap) {
     try {
       channelTeamMap = JSON.parse(envMap)
-      console.log('📋 채널-팀 매핑 로드:', Object.keys(channelTeamMap).length, '개')
+      console.log('📋 채널-조 매핑 로드:', Object.keys(channelTeamMap).length, '개')
       return
     } catch {
       console.error('CHANNEL_TEAM_MAP 파싱 실패')
@@ -37,10 +37,10 @@ export async function loadChannelTeamMap(): Promise<void> {
     if (res.ok) {
       const data = await res.json()
       channelTeamMap = data.map || {}
-      console.log('📋 채널-팀 매핑 API에서 로드:', Object.keys(channelTeamMap).length, '개')
+      console.log('📋 채널-조 매핑 API에서 로드:', Object.keys(channelTeamMap).length, '개')
     }
   } catch {
-    console.log('⚠️ 채널-팀 매핑 로드 실패, 빈 맵으로 시작')
+    console.log('⚠️ 채널-조 매핑 로드 실패, 빈 맵으로 시작')
   }
 }
 
@@ -150,8 +150,8 @@ export async function handleDaoboardCommand(interaction: ChatInputCommandInterac
   }
 
   // Reply
-  const teamLabel = team ? ` [${team}팀]` : ''
-  const noTeamWarning = !team ? '\n⚠️ 이 채널에 팀이 연결되지 않았습니다. Admin에서 설정해주세요.' : ''
+  const teamLabel = team ? ` [${team}조]` : ''
+  const noTeamWarning = !team ? '\n⚠️ 이 채널에 조가 연결되지 않았습니다. Admin에서 설정해주세요.' : ''
 
   await interaction.reply({
     content: `${config.emoji}${teamLabel} **${config.label}** ${content}${noTeamWarning}`,

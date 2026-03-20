@@ -58,7 +58,7 @@ export default function OverviewView({ allEvents, tasks, milestones, teamStats, 
 
   const recentMilestones = milestones.slice(-3).reverse()
 
-  // 활동이 없는 팀 감지 (3일 이상)
+  // 활동이 없는 조 감지 (3일 이상)
   const inactiveTeams = TEAMS.filter((t) => t.id !== 'test').filter((team) => {
     const stat = teamStats[team.id]
     if (!stat || !stat.lastActivity) return true
@@ -93,13 +93,13 @@ export default function OverviewView({ allEvents, tasks, milestones, teamStats, 
           <p className="mt-1 text-xs text-gray-400">달성 완료</p>
         </div>
         <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-900">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">활성 팀</p>
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">활성 조</p>
           <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
             {TEAMS.filter((t) => t.id !== 'test').length - inactiveTeams.length}
             <span className="text-lg font-normal text-gray-400">/{TEAMS.filter((t) => t.id !== 'test').length}</span>
           </p>
           {inactiveTeams.length > 0 && (
-            <p className="mt-1 text-xs text-amber-500">{inactiveTeams.length}팀 휴면</p>
+            <p className="mt-1 text-xs text-amber-500">{inactiveTeams.length}조 휴면</p>
           )}
         </div>
       </div>
@@ -107,7 +107,7 @@ export default function OverviewView({ allEvents, tasks, milestones, teamStats, 
       {/* Team Progress Cards */}
       <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
         <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-          팀별 진행 현황
+          조별 진행 현황
         </h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {TEAMS.filter((t) => t.id !== 'test').map((team) => {
@@ -256,10 +256,10 @@ export default function OverviewView({ allEvents, tasks, milestones, teamStats, 
       {inactiveTeams.length > 0 && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-800/50 dark:bg-amber-900/20">
           <h3 className="mb-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
-            ⚠️ 활동이 없는 팀
+            ⚠️ 활동이 없는 조
           </h3>
           <p className="mb-3 text-xs text-amber-600/80 dark:text-amber-400/80">
-            최근 3일 이상 활동이 없는 팀입니다
+            최근 3일 이상 활동이 없는 조입니다
           </p>
           <div className="flex flex-wrap gap-2">
             {inactiveTeams.map((team) => (

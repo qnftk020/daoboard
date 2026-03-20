@@ -78,7 +78,7 @@ export async function DELETE(req: NextRequest) {
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 })
       }
-      return NextResponse.json({ message: `팀 미지정 이벤트 ${count}개 삭제 완료`, deleted: count })
+      return NextResponse.json({ message: `조 미지정 이벤트 ${count}개 삭제 완료`, deleted: count })
     } else {
       const { error, count } = await supabase
         .from('vibe_events')
@@ -88,7 +88,7 @@ export async function DELETE(req: NextRequest) {
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 })
       }
-      return NextResponse.json({ message: `${team}팀 이벤트 ${count}개 삭제 완료`, deleted: count })
+      return NextResponse.json({ message: `${team}조 이벤트 ${count}개 삭제 완료`, deleted: count })
     }
   } else if (scope === 'all') {
     // 전체 삭제

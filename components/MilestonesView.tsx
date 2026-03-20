@@ -27,7 +27,7 @@ function formatRelativeTime(iso: string): string {
 }
 
 export default function MilestonesView({ milestones, allEvents }: Props) {
-  // 팀별 마일스톤 그룹핑
+  // 조별 마일스톤 그룹핑
   const milestonesByTeam = new Map<string, Milestone[]>()
   const noTeamMilestones: Milestone[] = []
 
@@ -65,7 +65,7 @@ export default function MilestonesView({ milestones, allEvents }: Props) {
           <p className="mt-1 text-3xl font-bold text-amber-700 dark:text-amber-300">{milestones.length}</p>
         </div>
         <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-900">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">참여 팀</p>
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">참여 조</p>
           <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">{milestonesByTeam.size}</p>
         </div>
         {milestones.length > 0 && (
@@ -128,7 +128,7 @@ export default function MilestonesView({ milestones, allEvents }: Props) {
       {milestonesByTeam.size > 0 && (
         <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            팀별 마일스톤
+            조별 마일스톤
           </h3>
           <div className="grid gap-4 sm:grid-cols-2">
             {TEAMS.filter((t) => t.id !== 'test' && milestonesByTeam.has(t.id)).map((team) => {

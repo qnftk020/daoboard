@@ -41,15 +41,16 @@ export interface Phase {
 }
 
 export const TEAMS = [
-  { id: '1', name: '1팀', color: '#8B5CF6' },  // purple
-  { id: '2', name: '2팀', color: '#3B82F6' },  // blue
-  { id: '3', name: '3팀', color: '#10B981' },  // green
-  { id: '4', name: '4팀', color: '#F59E0B' },  // amber
-  { id: '5', name: '5팀', color: '#EF4444' },  // red
+  { id: '1', name: '1조', color: '#8B5CF6' },  // purple
+  { id: '2', name: '2조', color: '#3B82F6' },  // blue
+  { id: '3', name: '3조', color: '#10B981' },  // green
+  { id: '4', name: '4조', color: '#F59E0B' },  // amber
+  { id: '5', name: '5조', color: '#EF4444' },  // red
+  { id: '6', name: '6조', color: '#EC4899' },  // pink
   { id: 'test', name: '테스트', color: '#6B7280' },  // gray
 ] as const
 
-export type TeamId = '1' | '2' | '3' | '4' | '5' | 'test'
+export type TeamId = '1' | '2' | '3' | '4' | '5' | '6' | 'test'
 
 export interface Task {
   id: string

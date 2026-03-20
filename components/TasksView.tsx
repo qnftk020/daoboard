@@ -29,7 +29,7 @@ function getDaysSinceCreation(iso: string): number {
 export default function TasksView({ tasks, allEvents, selectedTeam }: Props) {
   const [filter, setFilter] = useState<TaskFilter>('all')
 
-  // 팀별 태스크 매핑 (이벤트에서 팀 정보 가져오기)
+  // 조별 태스크 매핑 (이벤트에서 조 정보 가져오기)
   const taskWithTeam = tasks.map((task) => {
     const event = allEvents.find((e) => e.id === task.id)
     return { ...task, team: event?.team }
