@@ -11,24 +11,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const body = await req.json().catch(() => ({}))
-  const { afterDate } = body // YYYY-MM-DD 형식
-
   // Fetch all events from Discord
-  const allEvents = await fetchChannelHistory(500)
-
-  // 날짜 필터 적용
-  const events = afterDate
-    ? allEvents.filter((e) => e.timestamp >= `${afterDate}T00:00:00.000Z`)
-    : allEvents
+  const events = await fetchChannelHistory(500)
 
   if (events.length === 0) {
-    return NextResponse.json({
-      message: afterDate ? `${afterDate} 이후 이벤트가 없습니다` : 'No events to migrate',
-      count: 0,
-      total: 0,
-      filtered: allEvents.length - events.length,
-    })
+    return NextResponse.json({ message: 'No events to migrate', count: 0 })
   }
 
   // Batch upsert into Supabase
@@ -64,7 +51,5 @@ export async function POST(req: NextRequest) {
     total: events.length,
     inserted,
     skipped,
-    filtered: allEvents.length - events.length,
-    afterDate: afterDate || null,
   })
 }
