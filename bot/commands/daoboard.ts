@@ -138,7 +138,7 @@ export async function handleDaoboardCommand(interaction: ChatInputCommandInterac
     }
   }
 
-  // end: Supabase에서 활성 세션 검증
+  // end: Supabase에서 활성 세션 검증 — 반드시 활성 세션명과 일치해야 함
   if (subcommand === 'end') {
     const activeSession = await getActiveSession(team)
 
@@ -150,7 +150,6 @@ export async function handleDaoboardCommand(interaction: ChatInputCommandInterac
       return
     }
 
-    // __no_session__ 은 autocomplete에서 "활성 세션 없음" 선택 시
     if (content === '__no_session__') {
       await interaction.reply({
         content: '❌ 현재 활성 세션이 없습니다.',
@@ -158,14 +157,23 @@ export async function handleDaoboardCommand(interaction: ChatInputCommandInterac
       })
       return
     }
-  } else if (subcommand !== 'end' && !content) {
+
+    // 입력값이 없거나 활성 세션명과 다르면 거부 → 자동완성에서 선택하도록 유도
+    if (content && content !== activeSession) {
+      await interaction.reply({
+        content: `⚠️ **"${content}"**는 현재 활성 세션이 아닙니다.\n\n현재 활성 세션: **${activeSession}**\n\n자동완성 목록에서 선택해주세요.`,
+        flags: 64,
+      })
+      return
+    }
+  } else if (!content) {
     await interaction.reply({ content: '❌ 내용을 입력해주세요.', flags: 64 })
     return
   }
 
   const vibeLogChannelId = process.env.DISCORD_CHANNEL_ID
   const teamTag = team ? `[TEAM:${team}] ` : ''
-  const effectiveContent = content || (subcommand === 'end' ? '세션 종료' : '')
+  const effectiveContent = subcommand === 'end' ? (content || await getActiveSession(team) || '세션 종료') : content
   const formattedMessage = `${config.prefix} ${teamTag}${effectiveContent}`
 
   // Post to #vibe-log channel
