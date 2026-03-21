@@ -1,5 +1,6 @@
-import { ChatInputCommandInteraction, TextChannel } from 'discord.js'
+import { ChatInputCommandInteraction, AutocompleteInteraction, TextChannel } from 'discord.js'
 import { sendWebhook } from '../utils/webhook'
+import { getOpenTasks, getActiveSession } from '../utils/supabase'
 import { VibeEventType } from '../../types/vibe'
 
 const SUBCOMMAND_MAP: Record<string, { type: VibeEventType; prefix: string; emoji: string; label: string }> = {
@@ -11,14 +12,10 @@ const SUBCOMMAND_MAP: Record<string, { type: VibeEventType; prefix: string; emoj
   end: { type: 'SESSION_END', prefix: '[VIBE:END]', emoji: '🏁', label: '세션 종료' },
 }
 
-// In-memory task tracker
-const activeTasks = new Map<string, Set<string>>()
-
 // Channel-Team mapping cache
 let channelTeamMap: Record<string, string> = {}
 
 export async function loadChannelTeamMap(): Promise<void> {
-  // Load from env (JSON format) or API
   const envMap = process.env.CHANNEL_TEAM_MAP
   if (envMap) {
     try {
@@ -30,7 +27,6 @@ export async function loadChannelTeamMap(): Promise<void> {
     }
   }
 
-  // Fallback: fetch from API
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'
   try {
     const res = await fetch(`${appUrl}/api/admin/channel-map`)
@@ -52,6 +48,40 @@ function getTeamFromChannel(channelId: string): string | undefined {
   return channelTeamMap[channelId]
 }
 
+/** Autocomplete handler for done/end */
+export async function handleDaoboardAutocomplete(interaction: AutocompleteInteraction) {
+  const subcommand = interaction.options.getSubcommand()
+  const focused = interaction.options.getFocused()
+  const team = getTeamFromChannel(interaction.channelId)
+
+  try {
+    if (subcommand === 'done') {
+      const openTasks = await getOpenTasks(team)
+      const filtered = openTasks
+        .filter((t) => t.toLowerCase().includes(focused.toLowerCase()))
+        .slice(0, 25)
+
+      await interaction.respond(
+        filtered.map((t) => ({ name: t, value: t }))
+      )
+    } else if (subcommand === 'end') {
+      const activeSession = await getActiveSession(team)
+      if (activeSession) {
+        await interaction.respond([
+          { name: `현재 세션: ${activeSession}`, value: activeSession },
+        ])
+      } else {
+        await interaction.respond([
+          { name: '활성 세션 없음', value: '__no_session__' },
+        ])
+      }
+    }
+  } catch (error) {
+    console.error('Autocomplete 오류:', error)
+    await interaction.respond([])
+  }
+}
+
 export async function handleDaoboardCommand(interaction: ChatInputCommandInteraction) {
   const subcommand = interaction.options.getSubcommand()
   const content = interaction.options.getString('content') ?? ''
@@ -64,61 +94,71 @@ export async function handleDaoboardCommand(interaction: ChatInputCommandInterac
 
   // Auto-detect team from channel
   const team = getTeamFromChannel(interaction.channelId)
-  const taskKey = team || 'global'
 
-  // task: 태스크 등록
-  if (subcommand === 'task') {
-    if (!content) {
-      await interaction.reply({ content: '❌ 태스크 이름을 입력해주세요.', flags: 64 })
-      return
-    }
-    if (!activeTasks.has(taskKey)) activeTasks.set(taskKey, new Set())
-    activeTasks.get(taskKey)!.add(content)
-  }
-
-  // done: 매칭 검증
+  // done: Supabase에서 미완료 태스크 검증
   if (subcommand === 'done') {
-    const tasks = activeTasks.get(taskKey)
     if (!content) {
-      // content 없으면 등록된 태스크 목록 보여주기
-      if (tasks && tasks.size > 0) {
-        const taskList = [...tasks].map((t, i) => `${i + 1}. \`${t}\``).join('\n')
+      const openTasks = await getOpenTasks(team)
+      if (openTasks.length > 0) {
+        const taskList = openTasks.map((t, i) => `${i + 1}. \`${t}\``).join('\n')
         await interaction.reply({
-          content: `📋 **현재 등록된 태스크:**\n${taskList}\n\n완료할 태스크 이름을 입력해주세요:\n\`/daoboard done [태스크명]\``,
+          content: `📋 **현재 미완료 태스크:**\n${taskList}\n\n완료할 태스크를 선택해주세요:\n\`/daoboard done [태스크명]\``,
           flags: 64,
         })
       } else {
-        await interaction.reply({ content: '📋 등록된 태스크가 없습니다.', flags: 64 })
+        await interaction.reply({ content: '📋 미완료 태스크가 없습니다.', flags: 64 })
       }
       return
     }
-    if (tasks && tasks.size > 0 && !tasks.has(content)) {
-      const similar = [...tasks].filter(
+
+    const openTasks = await getOpenTasks(team)
+
+    if (openTasks.length === 0) {
+      await interaction.reply({
+        content: '❌ 현재 미완료 태스크가 없습니다. 먼저 `/daoboard task`로 태스크를 추가해주세요.',
+        flags: 64,
+      })
+      return
+    }
+
+    if (!openTasks.includes(content)) {
+      const similar = openTasks.filter(
         (t) => t.toLowerCase().includes(content.toLowerCase()) || content.toLowerCase().includes(t.toLowerCase())
       )
-      const taskList = [...tasks].map((t) => `  • \`${t}\``).join('\n')
+      const taskList = openTasks.map((t) => `  • \`${t}\``).join('\n')
       const suggestion = similar.length > 0
         ? `\n\n💡 혹시 이 태스크인가요?\n${similar.map((t) => `  → **${t}**`).join('\n')}`
         : ''
 
       await interaction.reply({
-        content: `⚠️ **"${content}"** 와 일치하는 태스크가 없습니다.\n\n📋 현재 태스크:\n${taskList}${suggestion}`,
+        content: `⚠️ **"${content}"** 와 일치하는 미완료 태스크가 없습니다.\n\n📋 현재 미완료 태스크:\n${taskList}${suggestion}`,
         flags: 64,
       })
       return
     }
-    if (tasks) tasks.delete(content)
   }
 
-  // start: 태스크 초기화
-  if (subcommand === 'start') {
-    activeTasks.set(taskKey, new Set())
-  }
-
-  // end: content 자동 처리
+  // end: Supabase에서 활성 세션 검증
   if (subcommand === 'end') {
-    // content 없으면 "세션 종료"로 자동 설정
-  } else if (!content) {
+    const activeSession = await getActiveSession(team)
+
+    if (!activeSession) {
+      await interaction.reply({
+        content: '❌ 현재 활성 세션이 없습니다. 먼저 `/daoboard start`로 세션을 시작해주세요.',
+        flags: 64,
+      })
+      return
+    }
+
+    // __no_session__ 은 autocomplete에서 "활성 세션 없음" 선택 시
+    if (content === '__no_session__') {
+      await interaction.reply({
+        content: '❌ 현재 활성 세션이 없습니다.',
+        flags: 64,
+      })
+      return
+    }
+  } else if (subcommand !== 'end' && !content) {
     await interaction.reply({ content: '❌ 내용을 입력해주세요.', flags: 64 })
     return
   }

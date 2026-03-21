@@ -47,6 +47,7 @@ interface DbStats {
   typeCounts: Record<string, number>
   teamCounts: Record<string, number>
   channelCounts: Record<string, number>
+  dateCounts: Record<string, number>
   oldestEvent: string | null
   newestEvent: string | null
 }
@@ -69,6 +70,10 @@ export default function AdminPage() {
   const [dbMessage, setDbMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const [migrateLoading, setMigrateLoading] = useState(false)
+  const [migrateAfterDate, setMigrateAfterDate] = useState('')
+
+  // 날짜 기준 삭제
+  const [deleteBeforeDate, setDeleteBeforeDate] = useState('')
 
   // 채널-조 매핑
   const [channelTeamMap, setChannelTeamMap] = useState<Record<string, string>>({})
@@ -207,7 +212,7 @@ export default function AdminPage() {
         setDbMessage({ type: 'success', text: data.message })
         // 전체 삭제 시 즉시 UI 반영
         if (scope === 'all') {
-          setDbStats({ totalEvents: 0, typeCounts: {}, teamCounts: {}, channelCounts: {}, oldestEvent: null, newestEvent: null })
+          setDbStats({ totalEvents: 0, typeCounts: {}, teamCounts: {}, channelCounts: {}, dateCounts: {}, oldestEvent: null, newestEvent: null })
         } else {
           await fetchDbStats()
         }
@@ -224,10 +229,16 @@ export default function AdminPage() {
     setMigrateLoading(true)
     setDbMessage(null)
     try {
-      const res = await fetch('/api/admin/migrate', { method: 'POST' })
+      const res = await fetch('/api/admin/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ afterDate: migrateAfterDate || undefined }),
+      })
       const data = await res.json()
       if (res.ok) {
-        setDbMessage({ type: 'success', text: `${data.message}: ${data.inserted}개 저장, ${data.skipped}개 스킵` })
+        const dateInfo = data.afterDate ? ` (${data.afterDate} 이후)` : ''
+        const filteredInfo = data.filtered > 0 ? `, ${data.filtered}개 날짜 필터됨` : ''
+        setDbMessage({ type: 'success', text: `${data.message}${dateInfo}: ${data.inserted}개 저장, ${data.skipped}개 스킵${filteredInfo}` })
         await fetchDbStats()
       } else {
         setDbMessage({ type: 'error', text: data.error || '마이그레이션 실패' })
@@ -237,6 +248,30 @@ export default function AdminPage() {
     } finally {
       setMigrateLoading(false)
     }
+  }
+
+  const handleDateDelete = async () => {
+    if (!deleteBeforeDate) return
+    setDbLoading(true)
+    setDbMessage(null)
+    try {
+      const res = await fetch('/api/admin/db', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'date', beforeDate: deleteBeforeDate }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setDbMessage({ type: 'success', text: data.message })
+        setDeleteBeforeDate('')
+        await fetchDbStats()
+      } else {
+        setDbMessage({ type: 'error', text: data.error })
+      }
+    } catch {
+      setDbMessage({ type: 'error', text: '삭제 요청 실패' })
+    }
+    setDbLoading(false)
   }
 
   useEffect(() => {
@@ -646,23 +681,66 @@ export default function AdminPage() {
                   </div>
                 </div>
 
+                {/* 날짜별 데이터 분포 */}
+                {dbStats.dateCounts && Object.keys(dbStats.dateCounts).length > 0 && (
+                  <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+                    <p className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">📅 날짜별 데이터 분포</p>
+                    <div className="max-h-[200px] space-y-1 overflow-y-auto">
+                      {Object.entries(dbStats.dateCounts)
+                        .sort(([a], [b]) => b.localeCompare(a))
+                        .map(([date, count]) => {
+                          const maxCount = Math.max(...Object.values(dbStats.dateCounts))
+                          const width = Math.max(8, (count / maxCount) * 100)
+                          return (
+                            <div key={date} className="flex items-center gap-3 text-xs">
+                              <span className="w-20 shrink-0 text-gray-500 dark:text-gray-400">{date}</span>
+                              <div className="flex-1">
+                                <div
+                                  className="h-4 rounded bg-purple-200 dark:bg-purple-800/50"
+                                  style={{ width: `${width}%` }}
+                                />
+                              </div>
+                              <span className="w-8 shrink-0 text-right font-medium text-gray-700 dark:text-gray-300">{count}</span>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Discord → Supabase 마이그레이션 */}
                 <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
-                        📥 Discord → Supabase 마이그레이션
-                      </p>
-                      <p className="mt-1 text-xs text-blue-600/70 dark:text-blue-400/70">
-                        Discord 채널의 기존 메시지를 DB로 가져옵니다
-                      </p>
+                  <div>
+                    <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                      📥 Discord → Supabase 마이그레이션
+                    </p>
+                    <p className="mt-1 text-xs text-blue-600/70 dark:text-blue-400/70">
+                      Discord 채널의 기존 메시지를 DB로 가져옵니다
+                    </p>
+                  </div>
+                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <div className="flex-1">
+                      <label className="mb-1 block text-xs font-medium text-blue-700 dark:text-blue-400">
+                        시작 날짜 (이후 데이터만 가져오기)
+                      </label>
+                      <input
+                        type="date"
+                        value={migrateAfterDate}
+                        onChange={(e) => setMigrateAfterDate(e.target.value)}
+                        min={dbStats.oldestEvent ? dbStats.oldestEvent.slice(0, 10) : undefined}
+                        max={new Date().toISOString().slice(0, 10)}
+                        className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-blue-700 dark:bg-gray-800 dark:text-gray-300"
+                      />
+                      {!migrateAfterDate && (
+                        <p className="mt-1 text-[10px] text-blue-500/70">비워두면 전체 기간</p>
+                      )}
                     </div>
                     <button
                       onClick={handleMigrate}
                       disabled={migrateLoading}
-                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+                      className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
                     >
-                      {migrateLoading ? '처리 중...' : '마이그레이션'}
+                      {migrateLoading ? '처리 중...' : migrateAfterDate ? `${migrateAfterDate} 이후 마이그레이션` : '전체 마이그레이션'}
                     </button>
                   </div>
                 </div>
@@ -671,7 +749,51 @@ export default function AdminPage() {
                 <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
                   <p className="mb-3 text-sm font-medium text-red-700 dark:text-red-400">⚠️ 데이터 초기화</p>
 
-                  <div className="space-y-2">
+                  <div className="space-y-3">
+                    {/* 날짜 기준 삭제 */}
+                    <div className="rounded-lg border border-red-300 bg-white/60 p-3 dark:border-red-700 dark:bg-gray-800/50">
+                      <p className="mb-2 text-xs font-medium text-red-600 dark:text-red-400">📅 날짜 기준 삭제</p>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                        <div className="flex-1">
+                          <label className="mb-1 block text-[10px] text-red-500 dark:text-red-400">
+                            이 날짜 이전 데이터 삭제
+                          </label>
+                          <input
+                            type="date"
+                            value={deleteBeforeDate}
+                            onChange={(e) => setDeleteBeforeDate(e.target.value)}
+                            min={dbStats.oldestEvent ? dbStats.oldestEvent.slice(0, 10) : undefined}
+                            max={dbStats.newestEvent ? dbStats.newestEvent.slice(0, 10) : undefined}
+                            className="w-full rounded-lg border border-red-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 dark:border-red-700 dark:bg-gray-800 dark:text-gray-300"
+                          />
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (!deleteBeforeDate) return
+                            const count = Object.entries(dbStats.dateCounts)
+                              .filter(([date]) => date < deleteBeforeDate)
+                              .reduce((sum, [, c]) => sum + c, 0)
+                            setResetModal({
+                              scope: 'date',
+                              label: `${deleteBeforeDate} 이전 데이터`,
+                              count,
+                            })
+                          }}
+                          disabled={!deleteBeforeDate || dbLoading}
+                          className="shrink-0 rounded-lg border border-red-400 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100 disabled:opacity-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30"
+                        >
+                          {deleteBeforeDate ? `${deleteBeforeDate} 이전 삭제` : '날짜를 선택하세요'}
+                        </button>
+                      </div>
+                      {deleteBeforeDate && dbStats.dateCounts && (
+                        <p className="mt-2 text-[10px] text-red-500">
+                          삭제 대상: {Object.entries(dbStats.dateCounts)
+                            .filter(([date]) => date < deleteBeforeDate)
+                            .reduce((sum, [, c]) => sum + c, 0)}개 이벤트
+                        </p>
+                      )}
+                    </div>
+
                     {/* 조별 삭제 */}
                     {Object.keys(dbStats.teamCounts).length > 0 && (
                       <div className="flex flex-wrap gap-2">
@@ -764,7 +886,11 @@ export default function AdminPage() {
               </button>
               <button
                 onClick={async () => {
-                  await handleDbReset(resetModal.scope, resetModal.team)
+                  if (resetModal.scope === 'date') {
+                    await handleDateDelete()
+                  } else {
+                    await handleDbReset(resetModal.scope, resetModal.team)
+                  }
                   setResetModal(null)
                 }}
                 disabled={dbLoading}

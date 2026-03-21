@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
-// GET: DB 통계 조회
+// GET: DB 통계 조회 + 날짜별 이벤트 수
 export async function GET(req: NextRequest) {
   const { verifySignedToken } = await import('../login/route')
   const token = req.cookies.get('admin-token')?.value
@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
   const typeCounts: Record<string, number> = {}
   const teamCounts: Record<string, number> = {}
   const channelCounts: Record<string, number> = {}
+  const dateCounts: Record<string, number> = {}
   let oldestEvent: string | null = null
   let newestEvent: string | null = null
 
@@ -42,6 +43,9 @@ export async function GET(req: NextRequest) {
       if (event.channel_name) {
         channelCounts[event.channel_name] = (channelCounts[event.channel_name] || 0) + 1
       }
+      // 날짜별 카운트
+      const dateKey = event.timestamp.slice(0, 10) // YYYY-MM-DD
+      dateCounts[dateKey] = (dateCounts[dateKey] || 0) + 1
     }
   }
 
@@ -50,12 +54,13 @@ export async function GET(req: NextRequest) {
     typeCounts,
     teamCounts,
     channelCounts,
+    dateCounts,
     oldestEvent,
     newestEvent,
   })
 }
 
-// DELETE: 데이터 초기화
+// DELETE: 데이터 삭제 (전체/팀별/날짜 기준)
 export async function DELETE(req: NextRequest) {
   const { verifySignedToken } = await import('../login/route')
   const token = req.cookies.get('admin-token')?.value
@@ -64,12 +69,40 @@ export async function DELETE(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { scope, team } = body // scope: 'all' | 'team', team: string
+  const { scope, team, beforeDate, afterDate } = body
+  // scope: 'all' | 'team' | 'date'
+
+  if (scope === 'date') {
+    // 날짜 기준 삭제
+    let query = supabase.from('vibe_events').delete({ count: 'exact' })
+
+    if (beforeDate) {
+      query = query.lt('timestamp', `${beforeDate}T00:00:00.000Z`)
+    }
+    if (afterDate) {
+      query = query.gte('timestamp', `${afterDate}T00:00:00.000Z`)
+    }
+    if (!beforeDate && !afterDate) {
+      return NextResponse.json({ error: 'beforeDate 또는 afterDate가 필요합니다.' }, { status: 400 })
+    }
+
+    const { error, count } = await query
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    const rangeText = beforeDate && afterDate
+      ? `${afterDate} ~ ${beforeDate} 이전`
+      : beforeDate
+        ? `${beforeDate} 이전`
+        : `${afterDate} 이후`
+
+    return NextResponse.json({ message: `${rangeText} 이벤트 ${count}개 삭제 완료`, deleted: count })
+  }
 
   if (scope === 'team' && team) {
-    // 특정 팀 데이터만 삭제
     if (team === 'none') {
-      // 팀 미지정 이벤트 삭제
       const { error, count } = await supabase
         .from('vibe_events')
         .delete({ count: 'exact' })
@@ -91,11 +124,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ message: `${team}조 이벤트 ${count}개 삭제 완료`, deleted: count })
     }
   } else if (scope === 'all') {
-    // 전체 삭제
     const { error, count } = await supabase
       .from('vibe_events')
       .delete({ count: 'exact' })
-      .gte('id', '') // delete all rows
+      .gte('id', '')
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })

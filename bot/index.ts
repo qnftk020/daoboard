@@ -1,6 +1,6 @@
 import { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } from 'discord.js'
 import dotenv from 'dotenv'
-import { handleDaoboardCommand, loadChannelTeamMap } from './commands/daoboard'
+import { handleDaoboardCommand, handleDaoboardAutocomplete, loadChannelTeamMap } from './commands/daoboard'
 
 dotenv.config({ path: '.env.local' })
 
@@ -42,7 +42,9 @@ const daoboardCommand = new SlashCommandBuilder()
     sub
       .setName('done')
       .setDescription('✅ 태스크 완료')
-      .addStringOption((opt) => opt.setName('content').setDescription('완료한 태스크 이름').setRequired(true))
+      .addStringOption((opt) =>
+        opt.setName('content').setDescription('완료한 태스크 이름').setRequired(true).setAutocomplete(true)
+      )
   )
   .addSubcommand((sub) =>
     sub
@@ -54,7 +56,9 @@ const daoboardCommand = new SlashCommandBuilder()
     sub
       .setName('end')
       .setDescription('🏁 세션 종료')
-      .addStringOption((opt) => opt.setName('content').setDescription('종료 메모 (선택)').setRequired(false))
+      .addStringOption((opt) =>
+        opt.setName('content').setDescription('종료할 세션 이름').setRequired(false).setAutocomplete(true)
+      )
   )
 
 // Register commands
@@ -78,9 +82,17 @@ client.once('ready', async () => {
 })
 
 client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isChatInputCommand()) return
-  if (interaction.commandName === 'daoboard') {
-    await handleDaoboardCommand(interaction)
+  if (interaction.isAutocomplete()) {
+    if (interaction.commandName === 'daoboard') {
+      await handleDaoboardAutocomplete(interaction)
+    }
+    return
+  }
+
+  if (interaction.isChatInputCommand()) {
+    if (interaction.commandName === 'daoboard') {
+      await handleDaoboardCommand(interaction)
+    }
   }
 })
 
