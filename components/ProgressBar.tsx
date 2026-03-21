@@ -12,7 +12,7 @@ export default function ProgressBar({ tasks }: Props) {
   const percent = total === 0 ? 0 : Math.round((done / total) * 100)
 
   return (
-    <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+    <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-6 dark:bg-gray-900">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           ✅ 태스크 완료율

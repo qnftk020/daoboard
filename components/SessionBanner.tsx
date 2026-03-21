@@ -71,9 +71,9 @@ export default function SessionBanner({ session }: Props) {
           )}
         </div>
 
-        <h2 className="text-2xl font-bold">{session.name}</h2>
+        <h2 className="text-xl font-bold sm:text-2xl break-words">{session.name}</h2>
 
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-purple-200">
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-purple-200 sm:gap-4">
           <span>시작: {formatTime(session.startedAt)}</span>
           {session.isActive && elapsed && (
             <span className="rounded-lg bg-white/10 px-2 py-1 font-mono text-white">

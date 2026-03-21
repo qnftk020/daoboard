@@ -47,18 +47,18 @@ export default function TasksView({ tasks, allEvents, selectedTeam }: Props) {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-900">
-          <p className="text-xs font-medium text-cyan-600 dark:text-cyan-400">진행 중</p>
-          <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">{openTasks.length}</p>
+          <p className="text-[10px] font-medium text-cyan-600 sm:text-xs dark:text-cyan-400">진행 중</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white">{openTasks.length}</p>
         </div>
         <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-900">
-          <p className="text-xs font-medium text-green-600 dark:text-green-400">완료</p>
-          <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">{doneTasks.length}</p>
+          <p className="text-[10px] font-medium text-green-600 sm:text-xs dark:text-green-400">완료</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white">{doneTasks.length}</p>
         </div>
         <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-900">
-          <p className="text-xs font-medium text-red-500 dark:text-red-400">장기 미완료</p>
-          <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">{overdueTasks.length}</p>
+          <p className="text-[10px] font-medium text-red-500 sm:text-xs dark:text-red-400">장기 미완료</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white">{overdueTasks.length}</p>
           <p className="mt-0.5 text-[11px] text-gray-400">7일 이상 미완료</p>
         </div>
       </div>
@@ -74,20 +74,20 @@ export default function TasksView({ tasks, allEvents, selectedTeam }: Props) {
               const team = task.team ? TEAMS.find((t) => t.id === task.team) : null
               const days = getDaysSinceCreation(task.createdAt)
               return (
-                <div key={task.id} className="flex items-center justify-between rounded-lg bg-white/60 px-4 py-2.5 dark:bg-gray-800/50">
-                  <div className="flex items-center gap-2">
-                    <span className="text-red-400">⬜</span>
-                    <span className="text-sm text-gray-800 dark:text-gray-200">{task.name}</span>
+                <div key={task.id} className="flex flex-col gap-1 rounded-lg bg-white/60 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between dark:bg-gray-800/50">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="shrink-0 text-red-400">⬜</span>
+                    <span className="truncate text-sm text-gray-800 dark:text-gray-200">{task.name}</span>
                     {team && (
                       <span
-                        className="rounded px-1.5 py-0.5 text-[10px] font-bold text-white"
+                        className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold text-white"
                         style={{ backgroundColor: team.color }}
                       >
                         {team.name}
                       </span>
                     )}
                   </div>
-                  <span className="text-xs font-medium text-red-500">{days}일 경과</span>
+                  <span className="shrink-0 pl-6 text-xs font-medium text-red-500 sm:pl-0">{days}일 경과</span>
                 </div>
               )
             })}
@@ -96,7 +96,7 @@ export default function TasksView({ tasks, allEvents, selectedTeam }: Props) {
       )}
 
       {/* Filter Tabs */}
-      <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+      <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-6 dark:bg-gray-900">
         <div className="mb-4 flex items-center gap-2">
           {filters.map((f) => (
             <button

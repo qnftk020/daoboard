@@ -72,7 +72,7 @@ export default function MilestonesView({ milestones, allEvents }: Props) {
       </div>
 
       {/* Timeline */}
-      <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+      <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-6 dark:bg-gray-900">
         <h3 className="mb-5 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           마일스톤 타임라인
         </h3>
@@ -116,7 +116,7 @@ export default function MilestonesView({ milestones, allEvents }: Props) {
 
       {/* By Team */}
       {milestonesByTeam.size > 0 && (
-        <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+        <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-6 dark:bg-gray-900">
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             조별 마일스톤
           </h3>

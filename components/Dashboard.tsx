@@ -219,7 +219,7 @@ export default function Dashboard() {
           <button
             onClick={() => { setSelectedTeam(null); setActiveTab('overview') }}
             aria-pressed={selectedTeam === null}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
               selectedTeam === null
                 ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
@@ -238,7 +238,7 @@ export default function Dashboard() {
                 }}
                 aria-pressed={isSelected}
                 aria-label={`${team.name}${teamStats[team.id]?.hasActiveSession ? ' (활성 세션)' : ''}`}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
                   isSelected
                     ? 'text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
@@ -267,7 +267,7 @@ export default function Dashboard() {
               else { setSelectedTeam('test'); setActiveTab('live') }
             }}
             aria-pressed={selectedTeam === 'test'}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
               selectedTeam === 'test'
                 ? 'bg-gray-900 text-white dark:bg-gray-200 dark:text-gray-900'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
@@ -336,7 +336,7 @@ export default function Dashboard() {
           <SessionBanner session={state.session} />
           <div className="grid gap-6 md:grid-cols-2">
             <ProgressBar tasks={state.tasks} />
-            <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+            <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-6 dark:bg-gray-900">
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 🏆 마일스톤
               </h3>

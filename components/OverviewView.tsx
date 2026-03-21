@@ -78,43 +78,43 @@ export default function OverviewView({ allEvents, tasks, milestones, teamStats, 
   return (
     <div className="space-y-6">
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-900">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">전체 이벤트</p>
-          <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">{allEvents.length}</p>
-          <p className="mt-1 text-xs text-gray-400">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+        <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-5 dark:bg-gray-900">
+          <p className="text-[10px] font-medium text-gray-500 sm:text-xs dark:text-gray-400">전체 이벤트</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white">{allEvents.length}</p>
+          <p className="mt-1 text-[10px] text-gray-400 sm:text-xs">
             이번 주 +{thisWeek.length}
             {weekDelta !== 0 && (
               <span className={weekDelta > 0 ? 'text-green-500' : 'text-red-400'}>
-                {' '}({weekDelta > 0 ? '▲' : '▼'}{Math.abs(weekDelta)} vs 지난주)
+                {' '}({weekDelta > 0 ? '▲' : '▼'}{Math.abs(weekDelta)}<span className="hidden sm:inline"> vs 지난주</span>)
               </span>
             )}
           </p>
         </div>
-        <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-900">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">태스크 완료율</p>
-          <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">{overallPercent}%</p>
-          <p className="mt-1 text-xs text-gray-400">{doneTasks}/{totalTasks} 완료</p>
+        <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-5 dark:bg-gray-900">
+          <p className="text-[10px] font-medium text-gray-500 sm:text-xs dark:text-gray-400">태스크 완료율</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white">{overallPercent}%</p>
+          <p className="mt-1 text-[10px] text-gray-400 sm:text-xs">{doneTasks}/{totalTasks} 완료</p>
         </div>
-        <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-900">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">마일스톤</p>
-          <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">{milestones.length}</p>
-          <p className="mt-1 text-xs text-gray-400">달성 완료</p>
+        <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-5 dark:bg-gray-900">
+          <p className="text-[10px] font-medium text-gray-500 sm:text-xs dark:text-gray-400">마일스톤</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white">{milestones.length}</p>
+          <p className="mt-1 text-[10px] text-gray-400 sm:text-xs">달성 완료</p>
         </div>
-        <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-gray-900">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400">활성 조</p>
-          <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
+        <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-5 dark:bg-gray-900">
+          <p className="text-[10px] font-medium text-gray-500 sm:text-xs dark:text-gray-400">활성 조</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white">
             {TEAMS.filter((t) => t.id !== 'test').length - inactiveTeams.length}
-            <span className="text-lg font-normal text-gray-400">/{TEAMS.filter((t) => t.id !== 'test').length}</span>
+            <span className="text-base font-normal text-gray-400 sm:text-lg">/{TEAMS.filter((t) => t.id !== 'test').length}</span>
           </p>
           {inactiveTeams.length > 0 && (
-            <p className="mt-1 text-xs text-amber-500">{inactiveTeams.length}조 휴면</p>
+            <p className="mt-1 text-[10px] text-amber-500 sm:text-xs">{inactiveTeams.length}조 휴면</p>
           )}
         </div>
       </div>
 
       {/* Team Progress Cards */}
-      <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+      <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-6 dark:bg-gray-900">
         <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
           조별 진행 현황
         </h3>
@@ -186,9 +186,9 @@ export default function OverviewView({ allEvents, tasks, milestones, teamStats, 
       </div>
 
       {/* Weekly Summary + Recent Milestones */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
         {/* Weekly Summary */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+        <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-6 dark:bg-gray-900">
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             이번 주 요약
           </h3>
@@ -225,7 +225,7 @@ export default function OverviewView({ allEvents, tasks, milestones, teamStats, 
         </div>
 
         {/* Recent Milestones */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+        <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-6 dark:bg-gray-900">
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             최근 마일스톤
           </h3>
@@ -263,7 +263,7 @@ export default function OverviewView({ allEvents, tasks, milestones, teamStats, 
 
       {/* Inactive Team Alert */}
       {inactiveTeams.length > 0 && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-800/50 dark:bg-amber-900/20">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5 dark:border-amber-800/50 dark:bg-amber-900/20">
           <h3 className="mb-2 text-sm font-semibold text-amber-700 dark:text-amber-400">
             ⚠️ 활동이 없는 조
           </h3>

@@ -99,7 +99,7 @@ export default function Timeline({ events }: Props) {
   return (
     <div className="space-y-4">
       {/* 핵심 이벤트 타임라인 */}
-      <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-900">
+      <div className="rounded-2xl bg-white p-4 shadow-sm sm:p-6 dark:bg-gray-900">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
             📜 타임라인
@@ -125,7 +125,7 @@ export default function Timeline({ events }: Props) {
                     </div>
                   )}
                   <div
-                    className={`flex items-start gap-3 rounded-xl border-l-4 px-4 py-3 transition-all ${TYPE_COLORS[event.type] ?? ''} ${i === keyEvents.length - 1 ? 'animate-fade-in' : ''}`}
+                    className={`flex items-start gap-2 rounded-xl border-l-4 px-3 py-2.5 transition-all sm:gap-3 sm:px-4 sm:py-3 ${TYPE_COLORS[event.type] ?? ''} ${i === keyEvents.length - 1 ? 'animate-fade-in' : ''}`}
                     style={teamColor ? { borderLeftColor: teamColor } : undefined}
                   >
                     <span className="mt-0.5 text-lg">{EVENT_ICONS[event.type]}</span>
