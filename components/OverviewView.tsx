@@ -1,6 +1,7 @@
 'use client'
 
 import { VibeEvent, Task, Milestone, TEAMS } from '@/types/vibe'
+import { formatRelativeTime } from '@/lib/format'
 
 interface TeamStat {
   events: number
@@ -37,17 +38,6 @@ function getWeekSummary(events: VibeEvent[]): { thisWeek: VibeEvent[]; lastWeek:
   return { thisWeek, lastWeek }
 }
 
-function formatRelativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return '방금 전'
-  if (minutes < 60) return `${minutes}분 전`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}시간 전`
-  const days = Math.floor(hours / 24)
-  return `${days}일 전`
-}
-
 export default function OverviewView({ allEvents, tasks, milestones, teamStats, onSelectTeam, onSwitchToLive }: Props) {
   const totalTasks = tasks.length
   const doneTasks = tasks.filter((t) => t.done).length
@@ -65,6 +55,25 @@ export default function OverviewView({ allEvents, tasks, milestones, teamStats, 
     const daysSince = (Date.now() - new Date(stat.lastActivity).getTime()) / (1000 * 60 * 60 * 24)
     return daysSince > 3
   })
+
+  if (allEvents.length === 0) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="text-center">
+          <span className="text-5xl">⚡</span>
+          <h2 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">아직 데이터가 없습니다</h2>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Discord에서 <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">/daoboard start</code>로 첫 세션을 시작해 보세요
+          </p>
+          <div className="mt-6 space-y-2 text-left text-sm text-gray-400 dark:text-gray-500">
+            <p><code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">/daoboard start</code> — 세션 시작</p>
+            <p><code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">/daoboard task</code> — 태스크 추가</p>
+            <p><code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-800">/daoboard milestone</code> — 마일스톤 기록</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

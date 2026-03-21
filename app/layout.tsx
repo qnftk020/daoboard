@@ -15,6 +15,21 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "DAOboard — 실시간 코딩 대시보드",
   description: "Discord 메시지 기반 실시간 코딩 진행상황 대시보드",
+  icons: {
+    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>",
+  },
+  openGraph: {
+    title: "DAOboard — 실시간 코딩 대시보드",
+    description: "Discord 연동 실시간 팀 코딩 진행상황 대시보드. 세션, 태스크, 마일스톤을 한눈에.",
+    type: "website",
+    locale: "ko_KR",
+    siteName: "DAOboard",
+  },
+  twitter: {
+    card: "summary",
+    title: "DAOboard — 실시간 코딩 대시보드",
+    description: "Discord 연동 실시간 팀 코딩 진행상황 대시보드",
+  },
 };
 
 export default function RootLayout({

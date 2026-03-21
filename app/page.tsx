@@ -12,15 +12,7 @@ export default function Home() {
             DAOboard
           </h1>
         </a>
-        <div className="flex items-center gap-3">
-          <a
-            href="/admin"
-            className="rounded-lg bg-purple-600/10 px-3 py-2 text-sm font-medium text-purple-600 transition hover:bg-purple-600/20 dark:bg-purple-500/10 dark:text-purple-400 dark:hover:bg-purple-500/20"
-          >
-            Admin
-          </a>
-          <ThemeToggle />
-        </div>
+        <ThemeToggle />
       </header>
 
       {/* Dashboard */}

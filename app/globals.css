@@ -23,7 +23,7 @@ body {
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
-@keyframes pulse-once {
+@keyframes fade-in {
   0% {
     opacity: 0;
     transform: translateY(8px);
@@ -34,8 +34,8 @@ body {
   }
 }
 
-.animate-pulse-once {
-  animation: pulse-once 0.4s ease-out;
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
 }
 
 /* Custom scrollbar */

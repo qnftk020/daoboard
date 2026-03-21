@@ -76,6 +76,7 @@ export default function Dashboard() {
   const [allEvents, setAllEvents] = useState<VibeEvent[]>([])
   const [connected, setConnected] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabId>('overview')
 
@@ -135,18 +136,27 @@ export default function Dashboard() {
     return TEAMS.filter((t) => t.id !== 'test' && teamStats[t.id]?.hasActiveSession).length
   }, [teamStats])
 
-  // Load initial history
-  useEffect(() => {
+  const loadEvents = useCallback(() => {
+    setLoading(true)
+    setError(null)
     fetch('/api/logs', { cache: 'no-store' })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`서버 오류 (${res.status})`)
+        return res.json()
+      })
       .then((events: VibeEvent[]) => {
         if (events.length > 0) {
           setAllEvents(events)
         }
       })
-      .catch(console.error)
+      .catch((err) => setError(err.message || '데이터를 불러올 수 없습니다'))
       .finally(() => setLoading(false))
   }, [])
+
+  // Load initial history
+  useEffect(() => {
+    loadEvents()
+  }, [loadEvents])
 
   // Subscribe to Pusher
   useEffect(() => {
@@ -177,6 +187,24 @@ export default function Dashboard() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="text-center">
+          <span className="text-4xl">⚠️</span>
+          <p className="mt-3 font-medium text-gray-900 dark:text-white">데이터를 불러올 수 없습니다</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{error}</p>
+          <button
+            onClick={loadEvents}
+            className="mt-4 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-purple-700"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Connection Status + Team Filter */}
@@ -187,10 +215,11 @@ export default function Dashboard() {
         </div>
 
         {/* Team Quick Filter */}
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1 sm:gap-1.5">
           <button
             onClick={() => { setSelectedTeam(null); setActiveTab('overview') }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+            aria-pressed={selectedTeam === null}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
               selectedTeam === null
                 ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
@@ -207,7 +236,9 @@ export default function Dashboard() {
                   if (isSelected) { setSelectedTeam(null); setActiveTab('overview') }
                   else { setSelectedTeam(team.id); setActiveTab('live') }
                 }}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                aria-pressed={isSelected}
+                aria-label={`${team.name}${teamStats[team.id]?.hasActiveSession ? ' (활성 세션)' : ''}`}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
                   isSelected
                     ? 'text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
@@ -235,7 +266,8 @@ export default function Dashboard() {
               if (selectedTeam === 'test') { setSelectedTeam(null); setActiveTab('overview') }
               else { setSelectedTeam('test'); setActiveTab('live') }
             }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+            aria-pressed={selectedTeam === 'test'}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${
               selectedTeam === 'test'
                 ? 'bg-gray-900 text-white dark:bg-gray-200 dark:text-gray-900'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
@@ -262,7 +294,7 @@ export default function Dashboard() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition ${
+                className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${
                   activeTab === tab.id
                     ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-900 dark:text-white'
                     : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'

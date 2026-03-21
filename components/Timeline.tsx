@@ -110,7 +110,7 @@ export default function Timeline({ events }: Props) {
         </div>
 
         {keyEvents.length > 0 ? (
-          <div className="max-h-[400px] space-y-2 overflow-y-auto pr-1">
+          <div className={`space-y-2 overflow-y-auto pr-1 ${keyEvents.length > 10 ? 'max-h-[500px]' : keyEvents.length > 5 ? 'max-h-[350px]' : ''}`}>
             {keyEvents.map((event, i) => {
               const teamColor = getTeamColor(event.team)
               return (
@@ -125,7 +125,7 @@ export default function Timeline({ events }: Props) {
                     </div>
                   )}
                   <div
-                    className={`flex items-start gap-3 rounded-xl border-l-4 px-4 py-3 transition-all ${TYPE_COLORS[event.type] ?? ''} ${i === keyEvents.length - 1 ? 'animate-pulse-once' : ''}`}
+                    className={`flex items-start gap-3 rounded-xl border-l-4 px-4 py-3 transition-all ${TYPE_COLORS[event.type] ?? ''} ${i === keyEvents.length - 1 ? 'animate-fade-in' : ''}`}
                     style={teamColor ? { borderLeftColor: teamColor } : undefined}
                   >
                     <span className="mt-0.5 text-lg">{EVENT_ICONS[event.type]}</span>
@@ -154,7 +154,7 @@ export default function Timeline({ events }: Props) {
       {logEvents.length > 0 && (
         <div className="rounded-2xl bg-white shadow-sm dark:bg-gray-900">
           <details className="group">
-            <summary className="flex cursor-pointer items-center justify-between px-6 py-4">
+            <summary className="flex cursor-pointer items-center justify-between px-6 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-t-2xl dark:focus-visible:ring-offset-gray-900">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 📝 활동 로그
               </h3>
@@ -163,11 +163,11 @@ export default function Timeline({ events }: Props) {
                 <span className="transition group-open:rotate-180">▾</span>
               </span>
             </summary>
-            <div className="max-h-[320px] space-y-1 overflow-y-auto px-6 pb-4">
+            <div className={`space-y-1 overflow-y-auto px-6 pb-4 ${logEvents.length > 10 ? 'max-h-[400px]' : logEvents.length > 5 ? 'max-h-[280px]' : ''}`}>
               {logEvents.map((event, i) => (
                 <div
                   key={event.id}
-                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm ${i === logEvents.length - 1 ? 'animate-pulse-once bg-blue-50 dark:bg-blue-900/20' : 'bg-gray-50 dark:bg-gray-800/50'}`}
+                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm ${i === logEvents.length - 1 ? 'animate-fade-in bg-blue-50 dark:bg-blue-900/20' : 'bg-gray-50 dark:bg-gray-800/50'}`}
                 >
                   <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
                     {formatTime(event.timestamp)}
