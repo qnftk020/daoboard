@@ -174,11 +174,24 @@ export default function OverviewView({ allEvents, tasks, milestones, teamStats, 
                   <span>마일스톤 {stat.milestones}</span>
                 </div>
 
-                {stat.lastActivity && (
-                  <p className="mt-2 text-[11px] text-gray-400 dark:text-gray-500">
-                    마지막 활동: {formatRelativeTime(stat.lastActivity)}
-                  </p>
-                )}
+                <div className="mt-2 flex items-center justify-between">
+                  {stat.lastActivity ? (
+                    <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                      마지막 활동: {formatRelativeTime(stat.lastActivity)}
+                    </p>
+                  ) : <span />}
+                  {team.notionUrl && (
+                    <a
+                      href={team.notionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600 transition hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                    >
+                      📄 Notion
+                    </a>
+                  )}
+                </div>
               </button>
             )
           })}

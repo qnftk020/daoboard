@@ -333,6 +333,20 @@ export default function Dashboard() {
       {/* 특정 조 → Live / Tasks / Milestones */}
       {selectedTeam && activeTab === 'live' && (
         <div className="space-y-6">
+          {(() => {
+            const team = TEAMS.find((t) => t.id === selectedTeam)
+            return team?.notionUrl ? (
+              <a
+                href={team.notionUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                📄 <span>{team.name} Notion 페이지</span>
+                <span className="text-xs text-gray-400">↗</span>
+              </a>
+            ) : null
+          })()}
           <SessionBanner session={state.session} />
           <div className="grid gap-6 md:grid-cols-2">
             <ProgressBar tasks={state.tasks} />
